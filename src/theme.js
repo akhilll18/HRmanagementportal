@@ -3,12 +3,12 @@ export const theme = {
 	workspaceName: "Northstar Studio",
 	companyName: "Northstar Studio",
 	currentUser: {
-		name: "Karthikeya Choppara",
-		shortName: "Karthikeya",
+		name: "Akhil Reddy",
+		shortName: "Akhil",
 		role: "MuleSoft Developer",
 		employeeId: "EMP001",
 		department: "Engineering",
-		email: "karthikeya@example.com",
+		email: "akhil@example.com",
 		initials: "KC",
 	},
 };

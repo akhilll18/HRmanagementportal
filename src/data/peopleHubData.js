@@ -2,16 +2,14 @@ export const navigation = [
   { id: "overview", label: "Overview", icon: "LayoutDashboard", group: "Workspace" },
   { id: "people", label: "People", icon: "UsersRound", group: "Workspace" },
   { id: "attendance", label: "Attendance", icon: "Clock3", group: "Workspace" },
-  { id: "timeoff", label: "Time off", icon: "CalendarDays", group: "Workspace" },
+  { id: "timeoff", label: "Request leave", icon: "CalendarDays", group: "Workspace" },
   { id: "pay", label: "Pay", icon: "WalletCards", group: "Company" },
-  { id: "growth", label: "Growth", icon: "ChartNoAxesColumnIncreasing", group: "Company" },
-  { id: "hiring", label: "Hiring", icon: "UserRoundPlus", group: "Company" },
   { id: "documents", label: "Documents", icon: "Files", group: "Company" },
   { id: "support", label: "HR support", icon: "LifeBuoy", group: "Company" },
 ];
 
 export const employees = [
-  { id: "EMP001", name: "Karthikeya Choppara", role: "MuleSoft Developer", department: "Engineering", email: "karthikeya@example.com", status: "Active", joined: "Jun 12, 2025" },
+  { id: "EMP001", name: "Akhil Reddy", role: "MuleSoft Developer", department: "Engineering", email: "akhil@example.com", status: "Active", joined: "Jun 12, 2025" },
   { id: "EMP002", name: "Swetha Reddy", role: "People Operations Partner", department: "People", email: "swetha@example.com", status: "Active", joined: "Jan 03, 2024" },
   { id: "EMP003", name: "Rahul Kumar", role: "Senior Accountant", department: "Finance", email: "rahul@example.com", status: "Active", joined: "Sep 17, 2023" },
   { id: "EMP004", name: "Ananya Sharma", role: "Software Engineer", department: "Engineering", email: "ananya@example.com", status: "On leave", joined: "Mar 21, 2025" },
@@ -40,18 +38,6 @@ export const payslips = [
   { month: "June 2026", gross: 55000, deductions: 5800, net: 49200, status: "Paid" },
 ];
 
-export const goals = [
-  { title: "Ship the billing integration", area: "Delivery", progress: 78, due: "Nov 30, 2026" },
-  { title: "Improve service test coverage", area: "Quality", progress: 62, due: "Dec 15, 2026" },
-  { title: "Complete platform security course", area: "Learning", progress: 35, due: "Dec 20, 2026" },
-];
-
-export const roles = [
-  { title: "Senior Product Designer", department: "Design", location: "Hyderabad", candidates: 18, stage: "Interviewing" },
-  { title: "People Operations Partner", department: "People", location: "Remote · India", candidates: 24, stage: "Screening" },
-  { title: "Finance Analyst", department: "Finance", location: "Hyderabad", candidates: 11, stage: "Sourcing" },
-];
-
 export const documents = [
   { name: "Employee handbook", category: "Policies", updated: "Updated Sep 12, 2026", description: "Workplace guidelines, benefits and company policies." },
   { name: "Remote work policy", category: "Policies", updated: "Updated Aug 28, 2026", description: "Guidelines for working remotely and requesting equipment." },
@@ -69,5 +55,5 @@ export const tickets = [
 export const notifications = [
   { title: "Your October payslip is ready", detail: "Payroll · 2 hours ago" },
   { title: "Time-off request approved", detail: "People team · Yesterday" },
-  { title: "Mid-year check-in is open", detail: "Growth · Oct 09" },
+  { title: "Your leave request is awaiting review", detail: "People team · Oct 09" },
 ];

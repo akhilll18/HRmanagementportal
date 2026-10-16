@@ -1,31 +1,552 @@
 import React, { useState } from "react";
-import { Bell, CalendarCheck2, ChartNoAxesColumnIncreasing, Clock3, Files, LayoutDashboard, LifeBuoy, Menu, Search, UserRoundPlus, UsersRound, WalletCards, X } from "lucide-react";
+import {
+  AppBar,
+  Toolbar,
+  Box,
+  Drawer,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Typography,
+  IconButton as MuiIconButton,
+  InputBase,
+  Badge as MuiBadge,
+  Popover,
+  Divider,
+  Stack,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
+import {
+  Notifications as Bell,
+  EventAvailable as CalendarCheck2,
+  AccessTime as Clock3,
+  Folder as Files,
+  Dashboard as LayoutDashboard,
+  Support as LifeBuoy,
+  Logout as LogOut,
+  Menu,
+  Search,
+  Groups as UsersRound,
+  AccountBalanceWallet as WalletCards,
+  Close as X,
+} from "@mui/icons-material";
 import { navigation, notifications } from "../data/peopleHubData.js";
 import { theme } from "../theme.js";
-import { Avatar, IconButton } from "./PortalUI.jsx";
+import { Avatar } from "./PortalUI.jsx";
 
-const iconMap = { LayoutDashboard, UsersRound, Clock3, CalendarCheck2, WalletCards, ChartNoAxesColumnIncreasing, UserRoundPlus, Files, LifeBuoy };
+const iconMap = {
+  LayoutDashboard,
+  UsersRound,
+  Clock3,
+  CalendarCheck2,
+  WalletCards,
+  Files,
+  LifeBuoy,
+};
 const iconNames = { timeoff: "CalendarCheck2" };
+const DRAWER_WIDTH = 250;
 
-export default function PortalShell({ page, onNavigate, onSearch, onProfile, children }) {
+export default function PortalShell({
+  page,
+  onNavigate,
+  onSearch,
+  onProfile,
+  onLogout,
+  children,
+}) {
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down("md"));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifAnchor, setNotifAnchor] = useState(null);
+
   const groups = ["Workspace", "Company"];
 
-  function submitSearch(event) {
-    event.preventDefault();
+  function submitSearch(e) {
+    e.preventDefault();
     onSearch(search.trim());
     setMobileOpen(false);
   }
 
-  return <div className="app-shell">
-    {mobileOpen && <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
-    <aside className={`sidebar ${mobileOpen ? "sidebar-open" : ""}`}>
-      <div className="brand-row"><span className="brand-mark">p</span><div className="brand-name">{theme.productName}<small>{theme.workspaceName}</small></div><IconButton label="Close navigation" className="sidebar-close" onClick={() => setMobileOpen(false)}><X size={17} /></IconButton></div>
-      {groups.map((group) => <React.Fragment key={group}><div className={`sidebar-caption ${group === "Company" ? "company-caption" : ""}`}>{group === "Workspace" ? "YOUR WORKSPACE" : "PEOPLE & CULTURE"}</div><nav className="side-nav" aria-label={`${group} navigation`}>{navigation.filter((item) => item.group === group).map((item) => { const Icon = iconMap[iconNames[item.id] || item.icon]; return <button key={item.id} className={`nav-item ${page === item.id ? "is-active" : ""}`} onClick={() => { onNavigate(item.id); setMobileOpen(false); }}><Icon size={17} /><span>{item.label}</span>{page === item.id && <i className="nav-marker" />}</button>; })}</nav></React.Fragment>)}
-      <div className="sidebar-bottom"><div className="workspace-status"><i className="status-dot" /><div><strong>All systems normal</strong><small>Workspace sync is up to date</small></div></div><button className="sidebar-profile" onClick={onProfile}><Avatar name={theme.currentUser.name} /><span><strong>{theme.currentUser.shortName}</strong><small>{theme.currentUser.role}</small></span><span className="profile-more">•••</span></button></div>
-    </aside>
-    <main className="main-area"><header className="topbar"><IconButton label="Open navigation" className="mobile-menu" onClick={() => setMobileOpen(true)}><Menu size={20} /></IconButton><div className="breadcrumb"><span>{theme.workspaceName}</span><i>/</i><strong>{navigation.find((item) => item.id === page)?.label || "Overview"}</strong></div><div className="topbar-actions"><form className="global-search" onSubmit={submitSearch}><Search size={16} /><input aria-label="Search people" placeholder="Search people..." value={search} onChange={(event) => setSearch(event.target.value)} /><kbd>Enter</kbd></form><div className="notification-wrap"><IconButton label="Notifications" className={notificationsOpen ? "icon-selected" : ""} onClick={() => setNotificationsOpen((value) => !value)}><Bell size={18} /><i className="notification-dot" /></IconButton>{notificationsOpen && <div className="notification-popover"><div className="popover-heading"><div><strong>Notifications</strong><small>Latest updates for you</small></div><span className="new-count">3 new</span></div>{notifications.map((item) => <div className="notification-item" key={item.title}><span className="notification-icon"><Bell size={15} /></span><div><strong>{item.title}</strong><small>{item.detail}</small></div></div>)}<button className="popover-footer" onClick={() => { setNotificationsOpen(false); onNavigate("timeoff"); }}>Open my updates</button></div>}</div><span className="topbar-divider" /><button className="topbar-user" onClick={onProfile}><Avatar name={theme.currentUser.name} /><span className="topbar-user-name">{theme.currentUser.shortName}</span></button></div></header><div className="page-content">{children}<footer className="page-footer"><span>PeopleHub workspace</span><span>Demo data · Changes are saved in this browser</span></footer></div></main>
-  </div>;
+  const drawerContent = (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        p: "21px 14px 13px",
+        background: "#fbfcfa",
+      }}
+    >
+      <Stack direction="row" alignItems="center" spacing={1.2} sx={{ px: 1, pb: 3.5 }}>
+        <Box
+          sx={{
+            width: 34,
+            height: 34,
+            borderRadius: "10px 10px 10px 3px",
+            background: "#27614e",
+            color: "#fff",
+            display: "grid",
+            placeItems: "center",
+            fontFamily: "Manrope",
+            fontWeight: 800,
+            fontSize: "1.4rem",
+            pb: 0.5,
+          }}
+        >
+          p
+        </Box>
+        <Box>
+          <Typography
+            sx={{
+              fontFamily: "Manrope",
+              fontWeight: 800,
+              fontSize: "0.9rem",
+              color: "#202922",
+              lineHeight: 1.15,
+            }}
+          >
+            {theme.productName}
+          </Typography>
+          <Typography sx={{ fontSize: "0.6rem", color: "#78827b", mt: 0.5 }}>
+            {theme.workspaceName}
+          </Typography>
+        </Box>
+        {isMobile && (
+          <MuiIconButton
+            size="small"
+            onClick={() => setMobileOpen(false)}
+            sx={{ ml: "auto" }}
+          >
+            <X sx={{ fontSize: 17 }} />
+          </MuiIconButton>
+        )}
+      </Stack>
+
+      {groups.map((group) => (
+        <Box key={group} sx={{ mb: 2 }}>
+          <Typography
+            sx={{
+              px: 1.2,
+              pb: 1,
+              fontSize: "0.55rem",
+              fontWeight: 700,
+              letterSpacing: "1.1px",
+              color: "#a1aaa3",
+            }}
+          >
+            {group === "Workspace" ? "YOUR WORKSPACE" : "PEOPLE & CULTURE"}
+          </Typography>
+          <List disablePadding>
+            {navigation
+              .filter((item) => item.group === group)
+              .map((item) => {
+                const Icon = iconMap[iconNames[item.id] || item.icon];
+                const active = page === item.id;
+                return (
+                  <ListItemButton
+                    key={item.id}
+                    onClick={() => {
+                      onNavigate(item.id);
+                      setMobileOpen(false);
+                    }}
+                    sx={{
+                      position: "relative",
+                      minHeight: 37,
+                      px: 1.2,
+                      borderRadius: 1,
+                      color: active ? "primary.main" : "#66716a",
+                      background: active ? "#eaf2ed" : "transparent",
+                      "&:hover": {
+                        background: active ? "#eaf2ed" : "#f0f4f0",
+                        color: active ? "primary.main" : "#202922",
+                      },
+                      mb: 0.4,
+                    }}
+                  >
+                    {active && (
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          left: 0,
+                          top: 10,
+                          bottom: 10,
+                          width: 2,
+                          borderRadius: 1,
+                          background: "primary.main",
+                        }}
+                      />
+                    )}
+                    <ListItemIcon sx={{ minWidth: 30, color: "inherit" }}>
+                      <Icon sx={{ fontSize: 17 }} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={item.label}
+                      primaryTypographyProps={{
+                        fontSize: "0.75rem",
+                        fontWeight: active ? 700 : 500,
+                      }}
+                    />
+                  </ListItemButton>
+                );
+              })}
+          </List>
+        </Box>
+      ))}
+
+      <Box sx={{ mt: "auto", display: "flex", flexDirection: "column", gap: 1.4 }}>
+        <Box
+          sx={{
+            p: "11px 9px",
+            border: "1px solid #e9ede8",
+            borderRadius: 1,
+            background: "#fff",
+            display: "flex",
+            gap: 1,
+          }}
+        >
+          <Box
+            sx={{
+              width: 7,
+              height: 7,
+              mt: 0.5,
+              borderRadius: "50%",
+              background: "#64a37a",
+              boxShadow: "0 0 0 3px #e7f3e9",
+              flexShrink: 0,
+            }}
+          />
+          <Box>
+            <Typography sx={{ fontSize: "0.6rem", fontWeight: 600 }}>
+              All systems normal
+            </Typography>
+            <Typography sx={{ fontSize: "0.55rem", color: "#78827b", mt: 0.4 }}>
+              Workspace sync is up to date
+            </Typography>
+          </Box>
+        </Box>
+
+        <Divider />
+
+        <ListItemButton onClick={onProfile} sx={{ px: 1, borderRadius: 1, gap: 1 }}>
+          <Avatar name={theme.currentUser.name} />
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography
+              sx={{
+                fontSize: "0.65rem",
+                fontWeight: 600,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {theme.currentUser.shortName}
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: "0.55rem",
+                color: "#78827b",
+                mt: 0.3,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {theme.currentUser.role}
+            </Typography>
+          </Box>
+        </ListItemButton>
+
+        {onLogout && (
+          <ListItemButton
+            onClick={onLogout}
+            sx={{
+              px: 1.2,
+              minHeight: 37,
+              borderRadius: 1,
+              color: "#66716a",
+              "&:hover": { background: "#f0f4f0", color: "#202922" },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 30, color: "inherit" }}>
+              <LogOut sx={{ fontSize: 17 }} />
+            </ListItemIcon>
+            <ListItemText
+              primary="Sign out"
+              primaryTypographyProps={{ fontSize: "0.75rem" }}
+            />
+          </ListItemButton>
+        )}
+      </Box>
+    </Box>
+  );
+
+  return (
+    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+      <Box component="nav" sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}>
+        {isMobile ? (
+          <Drawer
+            open={mobileOpen}
+            onClose={() => setMobileOpen(false)}
+            ModalProps={{ keepMounted: true }}
+            sx={{
+              "& .MuiDrawer-paper": { width: "min(280px, 84vw)", boxSizing: "border-box" },
+            }}
+          >
+            {drawerContent}
+          </Drawer>
+        ) : (
+          <Drawer
+            variant="permanent"
+            sx={{
+              "& .MuiDrawer-paper": {
+                width: DRAWER_WIDTH,
+                boxSizing: "border-box",
+                borderRight: "1px solid #e7ebe6",
+              },
+            }}
+            open
+          >
+            {drawerContent}
+          </Drawer>
+        )}
+      </Box>
+
+      <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <AppBar
+          position="sticky"
+          elevation={0}
+          sx={{
+            background: "rgba(255,255,255,0.93)",
+            backdropFilter: "blur(12px)",
+            borderBottom: "1px solid #e9ede8",
+            color: "#202922",
+          }}
+        >
+          <Toolbar
+            sx={{
+              minHeight: { xs: 57, md: 62 },
+              px: { xs: 1.5, md: 3.5 },
+              gap: 1.5,
+            }}
+          >
+            {isMobile && (
+              <MuiIconButton size="small" onClick={() => setMobileOpen(true)}>
+                <Menu sx={{ fontSize: 20 }} />
+              </MuiIconButton>
+            )}
+
+            <Stack direction="row" alignItems="center" spacing={1.2} sx={{ flex: 1, minWidth: 0 }}>
+              <Typography sx={{ fontSize: "0.65rem", color: "#8a948d" }}>
+                {theme.workspaceName}
+              </Typography>
+              <Typography sx={{ color: "#c8cec9" }}>/</Typography>
+              <Typography sx={{ fontSize: "0.65rem", fontWeight: 600, color: "#3d4941" }}>
+                {navigation.find((i) => i.id === page)?.label || "Overview"}
+              </Typography>
+            </Stack>
+
+            <Stack direction="row" alignItems="center" spacing={1.5}>
+              <Box
+                component="form"
+                onSubmit={submitSearch}
+                sx={{
+                  display: { xs: "none", sm: "flex" },
+                  width: 230,
+                  height: 34,
+                  alignItems: "center",
+                  gap: 1,
+                  px: 1.2,
+                  border: "1px solid #e8ece8",
+                  borderRadius: 1,
+                  background: "#fafbf9",
+                  color: "#8a948d",
+                  "&:focus-within": {
+                    borderColor: "#9eb9a7",
+                    boxShadow: "0 0 0 3px rgba(78,129,96,0.09)",
+                  },
+                }}
+              >
+                <Search sx={{ fontSize: 16 }} />
+                <InputBase
+                  placeholder="Search people..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  sx={{ fontSize: "0.65rem", flex: 1 }}
+                />
+                <Typography
+                  sx={{
+                    fontSize: "0.55rem",
+                    border: "1px solid #e4e8e4",
+                    borderRadius: 0.5,
+                    px: 0.6,
+                    py: 0.2,
+                    color: "#9aa39c",
+                  }}
+                >
+                  Enter
+                </Typography>
+              </Box>
+
+              <MuiIconButton
+                size="small"
+                onClick={(e) => setNotifAnchor(e.currentTarget)}
+                sx={{ color: "#66716a", "&:hover": { background: "#f1f4f0" } }}
+              >
+                <MuiBadge color="secondary" variant="dot" overlap="circular">
+                  <Bell sx={{ fontSize: 18 }} />
+                </MuiBadge>
+              </MuiIconButton>
+
+              <Popover
+                open={Boolean(notifAnchor)}
+                anchorEl={notifAnchor}
+                onClose={() => setNotifAnchor(null)}
+                anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                transformOrigin={{ vertical: "top", horizontal: "right" }}
+                PaperProps={{ sx: { width: 330, mt: 1, borderRadius: 1.5 } }}
+              >
+                <Box
+                  sx={{
+                    p: 2,
+                    pb: 1.5,
+                    borderBottom: "1px solid #edf0ec",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Box>
+                    <Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>
+                      Notifications
+                    </Typography>
+                    <Typography sx={{ fontSize: "0.6rem", color: "#78827b", mt: 0.3 }}>
+                      Latest updates for you
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{
+                      px: 1,
+                      py: 0.5,
+                      borderRadius: 0.5,
+                      background: "#edf4ee",
+                      color: "primary.main",
+                      fontSize: "0.55rem",
+                      fontWeight: 700,
+                    }}
+                  >
+                    3 new
+                  </Box>
+                </Box>
+
+                {notifications.map((item) => (
+                  <Box
+                    key={item.title}
+                    sx={{
+                      display: "flex",
+                      gap: 1.2,
+                      p: "12px 15px",
+                      borderBottom: "1px solid #f0f2ef",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 27,
+                        height: 27,
+                        borderRadius: 1,
+                        background: "#edf3ee",
+                        color: "primary.main",
+                        display: "grid",
+                        placeItems: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Bell sx={{ fontSize: 15 }} />
+                    </Box>
+                    <Box>
+                      <Typography sx={{ fontSize: "0.65rem", fontWeight: 600 }}>
+                        {item.title}
+                      </Typography>
+                      <Typography sx={{ fontSize: "0.6rem", color: "#78827b", mt: 0.4 }}>
+                        {item.detail}
+                      </Typography>
+                    </Box>
+                  </Box>
+                ))}
+
+                <Box
+                  onClick={() => {
+                    setNotifAnchor(null);
+                    onNavigate("timeoff");
+                  }}
+                  sx={{
+                    p: 1.4,
+                    textAlign: "center",
+                    background: "#fbfcfa",
+                    color: "primary.main",
+                    fontSize: "0.65rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  Open my updates
+                </Box>
+              </Popover>
+
+              <Divider orientation="vertical" flexItem sx={{ display: { xs: "none", md: "block" } }} />
+
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={1}
+                onClick={onProfile}
+                sx={{ cursor: "pointer" }}
+              >
+                <Avatar name={theme.currentUser.name} />
+                <Typography
+                  sx={{
+                    fontSize: "0.65rem",
+                    fontWeight: 600,
+                    display: { xs: "none", md: "block" },
+                  }}
+                >
+                  {theme.currentUser.shortName}
+                </Typography>
+              </Stack>
+            </Stack>
+          </Toolbar>
+        </AppBar>
+
+        <Box
+          sx={{
+            flex: 1,
+            width: "100%",
+            maxWidth: 1370,
+            mx: "auto",
+            p: { xs: "21px 14px 10px", md: "29px 34px 12px" },
+            backgroundImage: "radial-gradient(#dfe5df 0.55px, transparent 0.55px)",
+            backgroundSize: "19px 19px",
+          }}
+        >
+          {children}
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            sx={{
+              mt: 3.5,
+              pt: 2,
+              borderTop: "1px solid #e5eae4",
+              color: "#9ba49d",
+              fontSize: "0.55rem",
+            }}
+          >
+            <span>PeopleHub workspace</span>
+            <span>Demo data · Changes are saved in this browser</span>
+          </Stack>
+        </Box>
+      </Box>
+    </Box>
+  );
 }
