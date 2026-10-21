@@ -30,6 +30,7 @@ import {
   Search,
   Groups as UsersRound,
   AccountBalanceWallet as WalletCards,
+  AccountTree,
   Close as X,
 } from "@mui/icons-material";
 import { navigation, notifications } from "../data/peopleHubData.js";
@@ -44,6 +45,7 @@ const iconMap = {
   WalletCards,
   Files,
   LifeBuoy,
+  AccountTree,
 };
 const iconNames = { timeoff: "CalendarCheck2" };
 const DRAWER_WIDTH = 250;
@@ -59,6 +61,7 @@ export default function PortalShell({
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down("md"));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [search, setSearch] = useState("");
   const [notifAnchor, setNotifAnchor] = useState(null);
 
@@ -76,7 +79,7 @@ export default function PortalShell({
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        p: "21px 14px 13px",
+        p: collapsed ? "21px 9px 13px" : "21px 14px 13px",
         background: "#fbfcfa",
       }}
     >
@@ -98,7 +101,7 @@ export default function PortalShell({
         >
           p
         </Box>
-        <Box>
+        {!collapsed && <Box>
           <Typography
             sx={{
               fontFamily: "Manrope",
@@ -113,7 +116,7 @@ export default function PortalShell({
           <Typography sx={{ fontSize: "0.6rem", color: "#78827b", mt: 0.5 }}>
             {theme.workspaceName}
           </Typography>
-        </Box>
+        </Box>}
         {isMobile && (
           <MuiIconButton
             size="small"
@@ -127,7 +130,7 @@ export default function PortalShell({
 
       {groups.map((group) => (
         <Box key={group} sx={{ mb: 2 }}>
-          <Typography
+          {!collapsed && <Typography
             sx={{
               px: 1.2,
               pb: 1,
@@ -138,7 +141,7 @@ export default function PortalShell({
             }}
           >
             {group === "Workspace" ? "YOUR WORKSPACE" : "PEOPLE & CULTURE"}
-          </Typography>
+          </Typography>}
           <List disablePadding>
             {navigation
               .filter((item) => item.group === group)
@@ -148,6 +151,7 @@ export default function PortalShell({
                 return (
                   <ListItemButton
                     key={item.id}
+                    title={collapsed ? item.label : undefined}
                     onClick={() => {
                       onNavigate(item.id);
                       setMobileOpen(false);
@@ -183,6 +187,7 @@ export default function PortalShell({
                       <Icon sx={{ fontSize: 17 }} />
                     </ListItemIcon>
                     <ListItemText
+                      sx={{ display: collapsed ? "none" : "block" }}
                       primary={item.label}
                       primaryTypographyProps={{
                         fontSize: "0.75rem",
@@ -197,42 +202,13 @@ export default function PortalShell({
       ))}
 
       <Box sx={{ mt: "auto", display: "flex", flexDirection: "column", gap: 1.4 }}>
-        <Box
-          sx={{
-            p: "11px 9px",
-            border: "1px solid #e9ede8",
-            borderRadius: 1,
-            background: "#fff",
-            display: "flex",
-            gap: 1,
-          }}
-        >
-          <Box
-            sx={{
-              width: 7,
-              height: 7,
-              mt: 0.5,
-              borderRadius: "50%",
-              background: "#64a37a",
-              boxShadow: "0 0 0 3px #e7f3e9",
-              flexShrink: 0,
-            }}
-          />
-          <Box>
-            <Typography sx={{ fontSize: "0.6rem", fontWeight: 600 }}>
-              All systems normal
-            </Typography>
-            <Typography sx={{ fontSize: "0.55rem", color: "#78827b", mt: 0.4 }}>
-              Workspace sync is up to date
-            </Typography>
-          </Box>
-        </Box>
+      
 
         <Divider />
 
         <ListItemButton onClick={onProfile} sx={{ px: 1, borderRadius: 1, gap: 1 }}>
           <Avatar name={theme.currentUser.name} />
-          <Box sx={{ flex: 1, minWidth: 0 }}>
+          {!collapsed && <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography
               sx={{
                 fontSize: "0.65rem",
@@ -256,7 +232,7 @@ export default function PortalShell({
             >
               {theme.currentUser.role}
             </Typography>
-          </Box>
+          </Box>}
         </ListItemButton>
 
         {onLogout && (
@@ -274,6 +250,7 @@ export default function PortalShell({
               <LogOut sx={{ fontSize: 17 }} />
             </ListItemIcon>
             <ListItemText
+              sx={{ display: collapsed ? "none" : "block" }}
               primary="Sign out"
               primaryTypographyProps={{ fontSize: "0.75rem" }}
             />
@@ -285,7 +262,7 @@ export default function PortalShell({
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
-      <Box component="nav" sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}>
+      <Box component="nav" sx={{ width: { md: collapsed ? 72 : DRAWER_WIDTH }, flexShrink: { md: 0 }, transition: "width .18s ease" }}>
         {isMobile ? (
           <Drawer
             open={mobileOpen}
@@ -302,7 +279,7 @@ export default function PortalShell({
             variant="permanent"
             sx={{
               "& .MuiDrawer-paper": {
-                width: DRAWER_WIDTH,
+                width: collapsed ? 72 : DRAWER_WIDTH,
                 boxSizing: "border-box",
                 borderRight: "1px solid #e7ebe6",
               },
@@ -332,6 +309,11 @@ export default function PortalShell({
               gap: 1.5,
             }}
           >
+            {!isMobile && (
+              <MuiIconButton size="small" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setCollapsed((value) => !value)}>
+                <Menu sx={{ fontSize: 20 }} />
+              </MuiIconButton>
+            )}
             {isMobile && (
               <MuiIconButton size="small" onClick={() => setMobileOpen(true)}>
                 <Menu sx={{ fontSize: 20 }} />

@@ -19,6 +19,7 @@ import {
   AccountBalanceWallet as WalletCards,
 } from "@mui/icons-material";
 import { payslips } from "../data/peopleHubData.js";
+import { theme } from "../theme.js";
 import {
   Badge,
   Button,
@@ -200,6 +201,29 @@ export default function PayPage() {
           tone="blue"
         />
       </Box>
+
+      <Panel title="Employment details" subtitle="Your current employee record" sx={{ mb: 2 }}>
+        <TableContainer sx={{ overflowX: "auto" }}>
+          <Table sx={{ minWidth: 620 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>EMPLOYEE ID</TableCell>
+                <TableCell>DATE OF JOINING</TableCell>
+                <TableCell>JOB TITLE</TableCell>
+                <TableCell>DEPARTMENT</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              <TableRow>
+                <TableCell>{theme.currentUser.employeeId}</TableCell>
+                <TableCell>Jun 12, 2025</TableCell>
+                <TableCell>{theme.currentUser.role}</TableCell>
+                <TableCell>{theme.currentUser.department}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Panel>
 
       {/* ── Pay history table ─────────────────────────── */}
       <Panel

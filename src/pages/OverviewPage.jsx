@@ -11,7 +11,7 @@ import {
   Groups as UsersRound,
   AccountBalanceWallet as WalletCards,
 } from "@mui/icons-material";
-import { attendanceDays } from "../data/peopleHubData.js";
+import { attendanceDays, holidays } from "../data/peopleHubData.js";
 import { theme } from "../theme.js";
 import {
   Avatar,
@@ -45,17 +45,33 @@ const tasks = [
   },
 ];
 
+function formatClockTime(value) {
+  return value
+    ? new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    : "--:--";
+}
+
 export default function OverviewPage({
   onNavigate,
   onAction,
   checkedIn,
+  clockInAt,
+  clockOutAt,
   onToggle,
   employeeCount,
   pendingLeaves,
 }) {
   const hour = new Date().getHours();
+  const todayLabel = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
   const greeting =
     hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const upcomingHolidays = holidays.filter(
+    (holiday) => new Date(`${holiday.date} 12:00:00`) >= new Date()
+  ).slice(0, 3);
 
   return (
     <>
@@ -113,7 +129,7 @@ export default function OverviewPage({
                 color: "#c4d7c9",
               }}
             >
-              MONDAY, OCTOBER 12
+              {todayLabel.toUpperCase()}
             </Typography>
           </Stack>
 
@@ -222,13 +238,14 @@ export default function OverviewPage({
                 {checkedIn ? "You're checked in" : "Ready when you are"}
               </Typography>
             </Stack>
-            <Button
-              variant="light"
-              icon={checkedIn ? Check : Clock3}
-              onClick={onToggle}
-            >
-              {checkedIn ? "Clock out" : "Clock in"}
-            </Button>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={0.7}>
+              <Button variant="light" icon={Clock3} disabled={checkedIn} onClick={onToggle} sx={{ whiteSpace: "nowrap", minWidth: "max-content" }}>
+                Clock in{clockInAt ? ` · ${formatClockTime(clockInAt)}` : ""}
+              </Button>
+              <Button variant="light" icon={Check} disabled={!checkedIn} onClick={onToggle} sx={{ whiteSpace: "nowrap", minWidth: "max-content" }}>
+                Clock out{clockOutAt ? ` · ${formatClockTime(clockOutAt)}` : ""}
+              </Button>
+            </Stack>
           </Stack>
         </Stack>
       </Box>
@@ -250,7 +267,7 @@ export default function OverviewPage({
               mb: 0.4,
             }}
           >
-            MONDAY SNAPSHOT
+            {todayLabel.split(",")[0].toUpperCase()} SNAPSHOT
           </Typography>
           <Typography
             sx={{
@@ -296,6 +313,7 @@ export default function OverviewPage({
           note="Across 5 departments"
           icon={UsersRound}
           tone="green"
+          onClick={() => onNavigate("people")}
         />
         <StatCard
           label="Request leave"
@@ -303,6 +321,7 @@ export default function OverviewPage({
           note="Available balance"
           icon={CalendarDays}
           tone="orange"
+          onClick={() => onNavigate("timeoff")}
         />
         <StatCard
           label="Next payday"
@@ -310,6 +329,7 @@ export default function OverviewPage({
           note="October payroll"
           icon={WalletCards}
           tone="blue"
+          onClick={() => onNavigate("pay")}
         />
         <StatCard
           label="Open requests"
@@ -317,6 +337,7 @@ export default function OverviewPage({
           note="Leave awaiting review"
           icon={Clock3}
           tone="rose"
+          onClick={() => onNavigate("timeoff")}
         />
       </Box>
 
@@ -703,6 +724,26 @@ export default function OverviewPage({
           ))}
         </Panel>
       </Box>
+
+      <Panel title="Upcoming holidays" subtitle="Company days off ahead" sx={{ mt: 1.6 }}>
+        {upcomingHolidays.length ? upcomingHolidays.map((holiday, index) => {
+          const date = new Date(`${holiday.date} 12:00:00`);
+          const daysAway = Math.ceil((date - new Date()) / 86400000);
+          return (
+            <Stack key={holiday.name} direction="row" alignItems="center" spacing={1.2} sx={{ px: 1.8, py: 1.2, borderBottom: index < upcomingHolidays.length - 1 ? "1px solid #f0f2ef" : "none" }}>
+              <Box sx={{ width: 37, height: 40, border: "1px solid #e6ece5", borderRadius: 0.6, background: "#f8faf7", color: "#416b4d", display: "grid", alignContent: "center", justifyItems: "center", flexShrink: 0 }}>
+                <Typography sx={{ fontFamily: "Manrope", fontWeight: 700, fontSize: "0.85rem" }}>{date.getDate()}</Typography>
+                <Typography sx={{ fontSize: "0.45rem", fontWeight: 700 }}>{date.toLocaleDateString("en-US", { month: "short" }).toUpperCase()}</Typography>
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <Typography sx={{ fontSize: "0.65rem", fontWeight: 600 }}>{holiday.name}</Typography>
+                <Typography sx={{ mt: 0.3, color: "#8a948d", fontSize: "0.6rem" }}>{holiday.description}</Typography>
+              </Box>
+              <Typography sx={{ color: "#6f8a73", fontSize: "0.58rem", fontWeight: 600 }}>{daysAway === 0 ? "Today" : `In ${daysAway} days`}</Typography>
+            </Stack>
+          );
+        }) : <Typography sx={{ p: 2, color: "#89948c", fontSize: "0.65rem" }}>No upcoming holidays listed.</Typography>}
+      </Panel>
     </>
   );
 }

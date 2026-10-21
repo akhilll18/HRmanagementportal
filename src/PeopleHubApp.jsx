@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Box, Typography, Stack, IconButton as MuiIconButton } from "@mui/material";
-import { Check, X } from "@mui/icons-material";
+import { Check, Close as X } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
 import PortalShell from "./components/PortalShell.jsx";
@@ -13,6 +13,7 @@ import TimeOffPage from "./pages/TimeOffPage.jsx";
 import PayPage from "./pages/PayPage.jsx";
 import DocumentsPage from "./pages/DocumentsPage.jsx";
 import SupportPage from "./pages/SupportPage.jsx";
+import OrganizationPage from "./pages/OrganizationPage.jsx";
 
 import {
   employees as employeeSeed,
@@ -37,7 +38,10 @@ export default function PeopleHubApp() {
   const [supportTickets, setSupportTickets] = useState(() =>
     load("tickets", ticketSeed)
   );
+  const [userDocuments, setUserDocuments] = useState(() => load("user-documents", []));
   const [checkedIn, setCheckedIn] = useState(() => load("checked-in", false));
+  const [clockInAt, setClockInAt] = useState(() => load("clock-in-at", null));
+  const [clockOutAt, setClockOutAt] = useState(() => load("clock-out-at", null));
   const [dialog, setDialog] = useState(null);
   const [notice, setNotice] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -48,7 +52,10 @@ export default function PeopleHubApp() {
       employees: people,
       leaves,
       tickets: supportTickets,
+      "user-documents": userDocuments,
       "checked-in": checkedIn,
+      "clock-in-at": clockInAt,
+      "clock-out-at": clockOutAt,
     };
     for (const [key, value] of Object.entries(values)) {
       try {
@@ -57,7 +64,7 @@ export default function PeopleHubApp() {
         /* Browser storage may be disabled. */
       }
     }
-  }, [people, leaves, supportTickets, checkedIn]);
+  }, [people, leaves, supportTickets, userDocuments, checkedIn, clockInAt, clockOutAt]);
 
   // Auto-dismiss toast after 3.2s
   useEffect(() => {
@@ -100,12 +107,20 @@ export default function PeopleHubApp() {
           start: start.toLocaleDateString("en-US", dateOptions),
           end: end.toLocaleDateString("en-US", dateOptions),
           days,
+          note: values.note,
           status: "Pending",
-          requested: "Oct 12, 2026",
+          requested: new Date().toLocaleDateString("en-US", dateOptions),
         },
         ...current,
       ]);
       setNotice("Your time-off request was submitted.");
+    } else if (type === "cancel-leave") {
+      setLeaves((items) =>
+        items.map((item) =>
+          item.id === dialog.data.id ? { ...item, status: "Cancelled" } : item
+        )
+      );
+      setNotice("The request was cancelled.");
     } else if (type === "ticket") {
       setSupportTickets((current) => [
         {
@@ -118,12 +133,36 @@ export default function PeopleHubApp() {
         ...current,
       ]);
       setNotice("Your HR support request was created.");
+    } else if (type === "upload-document") {
+      Promise.all(values.files.map((file) => new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({
+          id: `DOC-${Date.now()}-${file.name}`,
+          name: file.name,
+          size: file.size,
+          type: file.type || "application/octet-stream",
+          data: reader.result,
+          uploaded: new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
+        });
+        reader.readAsDataURL(file);
+      }))).then((uploaded) => {
+        setUserDocuments((current) => [...uploaded, ...current]);
+        setNotice(`${uploaded.length} document${uploaded.length === 1 ? "" : "s"} uploaded.`);
+      });
+      setDialog(null);
     }
-    setDialog(null);
+    if (type !== "upload-document") setDialog(null);
   }
 
   // ── Clock toggle ────────────────────────────────────
   function toggleCheckIn() {
+    const timestamp = new Date().toISOString();
+    if (checkedIn) {
+      setClockOutAt(timestamp);
+    } else {
+      setClockInAt(timestamp);
+      setClockOutAt(null);
+    }
     setCheckedIn((value) => !value);
     setNotice(checkedIn ? "You are now clocked out." : "You are now clocked in.");
   }
@@ -157,21 +196,21 @@ export default function PeopleHubApp() {
       );
       break;
     case "attendance":
-      content = <AttendancePage checkedIn={checkedIn} onToggle={toggleCheckIn} />;
+      content = (
+        <AttendancePage
+          checkedIn={checkedIn}
+          clockInAt={clockInAt}
+          clockOutAt={clockOutAt}
+          onToggle={toggleCheckIn}
+        />
+      );
       break;
     case "timeoff":
       content = (
         <TimeOffPage
           leaves={leaves}
-          onAction={(type) => setDialog({ type })}
-          onCancel={(id) => {
-            setLeaves((items) =>
-              items.map((item) =>
-                item.id === id ? { ...item, status: "Cancelled" } : item
-              )
-            );
-            setNotice("The request was cancelled.");
-          }}
+          onAction={(type, data) => setDialog({ type, data })}
+          onCancel={(leave) => setDialog({ type: "cancel-leave", data: leave })}
         />
       );
       break;
@@ -179,12 +218,36 @@ export default function PeopleHubApp() {
       content = <PayPage />;
       break;
     case "documents":
-      content = <DocumentsPage />;
+      content = (
+        <DocumentsPage
+          uploadedDocuments={userDocuments}
+          onDelete={(id) => setUserDocuments((current) => current.filter((document) => document.id !== id))}
+          onUpload={(files) => {
+            const totalBytes = [
+              ...userDocuments.map((document) => document.size),
+              ...files.map((file) => file.size),
+            ].reduce((total, size) => total + size, 0);
+            if (totalBytes > 1.5 * 1024 * 1024) {
+              setNotice("Uploads are limited to 1.5 MB total in this browser demo.");
+              return;
+            }
+            submitAction("upload-document", { files });
+          }}
+        />
+      );
       break;
     case "support":
       content = (
         <SupportPage
           tickets={supportTickets}
+          onAction={(type) => setDialog({ type })}
+        />
+      );
+      break;
+    case "organization":
+      content = (
+        <OrganizationPage
+          people={people}
           onAction={(type) => setDialog({ type })}
         />
       );
@@ -195,9 +258,13 @@ export default function PeopleHubApp() {
           onNavigate={setPage}
           onAction={(type) => setDialog({ type })}
           checkedIn={checkedIn}
+          clockInAt={clockInAt}
+          clockOutAt={clockOutAt}
           onToggle={toggleCheckIn}
           employeeCount={people.length}
           pendingLeaves={leaves.filter((item) => item.status === "Pending").length}
+           clockInAt={clockInAt}
+           clockOutAt={clockOutAt}
         />
       );
   }

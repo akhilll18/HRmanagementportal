@@ -143,7 +143,7 @@ export function Panel({ title, subtitle, action, className, children, sx }) {
 }
 
 // ── StatCard ───────────────────────────────────────────────
-export function StatCard({ label, value, note, icon: Icon, tone = "green" }) {
+export function StatCard({ label, value, note, icon: Icon, tone = "green", onClick }) {
   const toneMap = {
     green: { bg: "#e9f2eb", color: "#47765a" },
     orange: { bg: "#fff0e9", color: "#c87850" },
@@ -153,6 +153,9 @@ export function StatCard({ label, value, note, icon: Icon, tone = "green" }) {
   const t = toneMap[tone] || toneMap.green;
   return (
     <Card
+      component={onClick ? "button" : "div"}
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
       sx={{
         p: "14px 15px",
         display: "grid",
@@ -161,6 +164,15 @@ export function StatCard({ label, value, note, icon: Icon, tone = "green" }) {
         columnGap: "10px",
         alignContent: "center",
         minHeight: 115,
+        ...(onClick ? {
+          width: "100%",
+          border: 0,
+          textAlign: "left",
+          font: "inherit",
+          cursor: "pointer",
+          transition: "transform .15s, box-shadow .15s",
+          "&:hover": { transform: "translateY(-2px)", boxShadow: "0 5px 15px rgba(30,46,34,.08)" },
+        } : {}),
       }}
     >
       <Box

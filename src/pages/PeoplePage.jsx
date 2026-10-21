@@ -292,7 +292,11 @@ export default function PeoplePage({ people, query, onAction }) {
                       {person.department}
                     </Box>
                   </TableCell>
-                  <TableCell sx={{ color: "#78837b" }}>{person.email}</TableCell>
+                  <TableCell>
+                    <Box component="a" href={`mailto:${person.email}`} sx={{ color: "#52755a", fontSize: "0.65rem", textDecoration: "none", "&:hover": { textDecoration: "underline" } }}>
+                      {person.email}
+                    </Box>
+                  </TableCell>
                   <TableCell>
                     <Badge tone={person.status === "Active" ? "green" : "orange"}>
                       {person.status}

@@ -11,7 +11,7 @@ import {
   DialogActions,
   IconButton,
 } from "@mui/material";
-import { X } from "@mui/icons-material";
+import { Close as X } from "@mui/icons-material";
 import { Button } from "./PortalUI.jsx";
 import { theme } from "../theme.js";
 
@@ -45,7 +45,7 @@ const configs = {
       },
       { name: "start", label: "Start date", type: "date", required: true },
       { name: "end", label: "End date", type: "date", required: true },
-      { name: "note", label: "Note for your manager", type: "textarea" },
+      { name: "note", label: "Reason for your leave", type: "textarea", required: true },
     ],
   },
   ticket: {
@@ -63,6 +63,12 @@ const configs = {
       { name: "description", label: "Details", type: "textarea", required: true },
     ],
   },
+  "cancel-leave": {
+    title: "Cancel leave request",
+    description: "This request will be marked as cancelled.",
+    submit: "Confirm cancellation",
+    fields: [],
+  },
 };
 
 export default function PortalDialog({ dialog, onClose, onSubmit }) {
@@ -73,7 +79,12 @@ export default function PortalDialog({ dialog, onClose, onSubmit }) {
     if (dialog && configs[dialog.type]) {
       const init = {};
       configs[dialog.type].fields.forEach((f) => {
-        init[f.name] = f.type === "select" ? f.options[0] : "";
+        init[f.name] =
+          f.name === "type" && dialog.data?.type
+            ? dialog.data.type
+            : f.type === "select"
+              ? f.options[0]
+              : "";
       });
       setValues(init);
     }
@@ -214,6 +225,32 @@ export default function PortalDialog({ dialog, onClose, onSubmit }) {
     );
   }
 
+  if (dialog.type === "leave-detail") {
+    const leave = dialog.data;
+    return (
+      <Dialog open onClose={onClose} PaperProps={{ sx: { width: 460, maxWidth: "100%", borderRadius: 1.5 } }}>
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", p: 2.5, pb: 1.8, borderBottom: "1px solid #edf0ec" }}>
+          <Box>
+            <Typography sx={{ fontFamily: "Manrope", fontWeight: 700, fontSize: "0.95rem", color: "#2c382f" }}>{leave?.type || "Leave request"}</Typography>
+            <Typography sx={{ mt: 0.5, color: "#879188", fontSize: "0.65rem" }}>Request {leave?.id}</Typography>
+          </Box>
+          <IconButton onClick={onClose} size="small"><X sx={{ fontSize: 18 }} /></IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 2.5 }}>
+          <Stack spacing={1.5}>
+            {[["Dates", `${leave?.start}${leave?.start !== leave?.end ? ` – ${leave?.end}` : ""}`], ["Duration", `${leave?.days} ${leave?.days === 1 ? "day" : "days"}`], ["Status", leave?.status], ["Requested", leave?.requested], ["Reason", leave?.note || "No reason provided."]].map(([label, value]) => (
+              <Box key={label} sx={{ display: "grid", gridTemplateColumns: "95px 1fr", gap: 1 }}>
+                <Typography sx={{ color: "#89948c", fontSize: "0.65rem" }}>{label}</Typography>
+                <Typography sx={{ color: "#465249", fontSize: "0.68rem", whiteSpace: label === "Reason" ? "pre-wrap" : "normal" }}>{value}</Typography>
+              </Box>
+            ))}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: "0 20px 16px" }}><Button variant="secondary" onClick={onClose}>Close</Button></DialogActions>
+      </Dialog>
+    );
+  }
+
   // ── Form dialog (employee / leave / ticket) ─
   const config = configs[dialog.type];
   if (!config) return null;
@@ -271,6 +308,16 @@ export default function PortalDialog({ dialog, onClose, onSubmit }) {
       <Box component="form" onSubmit={handleSubmit}>
         <DialogContent sx={{ p: 2.5 }}>
           <Stack spacing={1.6}>
+            {dialog.type === "cancel-leave" && (
+              <Box sx={{ p: 1.4, border: "1px solid #edf0ec", borderRadius: 1, background: "#fbfcfa" }}>
+                <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#354138" }}>
+                  {dialog.data?.type} · {dialog.data?.days} {dialog.data?.days === 1 ? "day" : "days"}
+                </Typography>
+                <Typography sx={{ mt: 0.5, fontSize: "0.65rem", color: "#78837b" }}>
+                  {dialog.data?.start}{dialog.data?.start !== dialog.data?.end ? ` – ${dialog.data?.end}` : ""}
+                </Typography>
+              </Box>
+            )}
             {config.fields.map((field) => (
               <Box key={field.name}>
                 <Typography

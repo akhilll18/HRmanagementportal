@@ -11,10 +11,13 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  IconButton,
 } from "@mui/material";
 import {
   CalendarMonth as CalendarDays,
   Add as Plus,
+  ChevronLeft,
+  ChevronRight,
 } from "@mui/icons-material";
 import {
   Badge,
@@ -25,9 +28,50 @@ import {
 
 export default function TimeOffPage({ leaves, onAction, onCancel }) {
   const [filter, setFilter] = useState("All requests");
+  const [month, setMonth] = useState(() => {
+    const date = new Date();
+    return new Date(date.getFullYear(), date.getMonth(), 1);
+  });
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const date = new Date();
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  });
   const filtered = leaves.filter(
     (leave) => filter === "All requests" || leave.status === filter
   );
+  const leaveTypes = [
+    { name: "Casual leave", total: 12, tone: "#4f8060" },
+    { name: "Sick leave", total: 10, tone: "#5481a0" },
+    { name: "Annual leave", total: 18, tone: "#be7952" },
+    { name: "Unpaid leave", total: 0, tone: "#9b6b76" },
+  ];
+  const usedDaysFor = (type) => leaves
+    .filter((leave) => leave.type === type && leave.status === "Approved")
+    .reduce((total, leave) => total + leave.days, 0);
+  const totalRemaining = leaveTypes.reduce(
+    (total, type) => total + Math.max(type.total - usedDaysFor(type.name), 0),
+    0
+  );
+  const offset = (new Date(month.getFullYear(), month.getMonth(), 1).getDay() + 6) % 7;
+  const dayCount = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const calendarDays = Array.from(
+    { length: Math.ceil((offset + dayCount) / 7) * 7 },
+    (_, index) => {
+      const day = index - offset + 1;
+      return day < 1 || day > dayCount
+        ? null
+        : `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  );
+  const leavesByDate = leaves.filter((leave) => leave.status !== "Cancelled").reduce((days, leave) => {
+    const start = new Date(`${leave.start} 12:00:00`);
+    const end = new Date(`${leave.end} 12:00:00`);
+    for (const date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      days[key] = [...(days[key] || []), leave];
+    }
+    return days;
+  }, {});
 
   return (
     <>
@@ -95,7 +139,7 @@ export default function TimeOffPage({ leaves, onAction, onCancel }) {
                 mt: 0.4,
               }}
             >
-              8{" "}
+              {totalRemaining}{" "}
               <Box
                 component="span"
                 sx={{ fontSize: "0.65rem", fontWeight: 500, color: "#66806d" }}
@@ -114,12 +158,9 @@ export default function TimeOffPage({ leaves, onAction, onCancel }) {
           spacing={2.5}
           sx={{ pl: { xs: 0, md: 0 }, width: { xs: "100%", md: "auto" } }}
         >
-          {[
-            { label: "Casual leave", value: "5 days", color: "#63936b" },
-            { label: "Sick leave", value: "3 days", color: "#8aa78c" },
-          ].map((b) => (
+          {leaveTypes.slice(0, 2).map((type) => (
             <Box
-              key={b.label}
+              key={type.name}
               sx={{
                 display: "grid",
                 gridTemplateColumns: "8px auto",
@@ -135,10 +176,10 @@ export default function TimeOffPage({ leaves, onAction, onCancel }) {
                   width: 7,
                   height: 7,
                   borderRadius: "50%",
-                  background: b.color,
+                  background: type.tone,
                 }}
               />
-              <span>{b.label}</span>
+              <span>{type.name}</span>
               <Box
                 component="strong"
                 sx={{
@@ -147,12 +188,57 @@ export default function TimeOffPage({ leaves, onAction, onCancel }) {
                   fontSize: "0.7rem",
                 }}
               >
-                {b.value}
+                {Math.max(type.total - usedDaysFor(type.name), 0)} days
               </Box>
             </Box>
           ))}
         </Stack>
       </Box>
+
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" }, gap: 1.2, mb: 2 }}>
+        {leaveTypes.map((type) => {
+          const used = usedDaysFor(type.name);
+          return (
+            <Box key={type.name} component="button" onClick={() => onAction("leave", { type: type.name })} sx={{ p: 1.6, textAlign: "left", border: "1px solid #e5eae5", borderRadius: 1, background: "#fff", cursor: "pointer", "&:hover": { borderColor: type.tone } }}>
+              <Typography sx={{ fontSize: "0.62rem", fontWeight: 700, color: "#455249" }}>{type.name}</Typography>
+              <Typography sx={{ mt: 0.8, fontFamily: "Manrope", fontWeight: 700, fontSize: "1.05rem", color: type.tone }}>{Math.max(type.total - used, 0)} <Box component="span" sx={{ fontSize: "0.6rem", fontWeight: 500 }}>remaining</Box></Typography>
+              <Typography sx={{ mt: 0.4, fontSize: "0.56rem", color: "#89948c" }}>{used} used of {type.total} days</Typography>
+            </Box>
+          );
+        })}
+      </Box>
+
+      <Panel title="Leave calendar" subtitle="Select a day to see scheduled time away" sx={{ mb: 2 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "minmax(280px, 0.85fr) 1fr" }, gap: 2, p: { xs: 1.4, sm: 2 } }}>
+          <Box>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.2 }}>
+              <Typography sx={{ fontFamily: "Manrope", fontWeight: 700, fontSize: "0.8rem", color: "#344037" }}>{month.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</Typography>
+              <Stack direction="row">
+                <IconButton aria-label="Previous month" size="small" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}><ChevronLeft fontSize="small" /></IconButton>
+                <IconButton aria-label="Next month" size="small" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><ChevronRight fontSize="small" /></IconButton>
+              </Stack>
+            </Stack>
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 0.4 }}>
+              {["M", "T", "W", "T", "F", "S", "S"].map((day, index) => <Typography key={`${day}-${index}`} sx={{ py: 0.5, textAlign: "center", color: "#929c94", fontSize: "0.58rem", fontWeight: 700 }}>{day}</Typography>)}
+              {calendarDays.map((date, index) => date ? (
+                <Box key={date} component="button" aria-label={new Date(`${date}T12:00:00`).toLocaleDateString("en-US", { dateStyle: "full" })} onClick={() => setSelectedDate(date)} sx={{ position: "relative", display: "grid", placeItems: "center", aspectRatio: "1", border: 0, borderRadius: 0.8, background: selectedDate === date ? "#eaf2ec" : "transparent", color: selectedDate === date ? "#27614e" : "#4f5b52", fontSize: "0.62rem", fontWeight: selectedDate === date ? 700 : 500, cursor: "pointer", "&:hover": { background: "#f1f5f1" } }}>
+                  {Number(date.slice(-2))}
+                  {leavesByDate[date]?.length > 0 && <Box sx={{ position: "absolute", bottom: 3, width: 4, height: 4, borderRadius: "50%", background: leavesByDate[date][0].status === "Approved" ? "#54845f" : "#c98554" }} />}
+                </Box>
+              ) : <Box key={`empty-${index}`} />)}
+            </Box>
+          </Box>
+          <Box sx={{ minHeight: 170, p: 1.6, border: "1px solid #edf0ec", borderRadius: 1, background: "#fbfcfa" }}>
+            <Typography sx={{ fontSize: "0.62rem", fontWeight: 700, color: "#455249" }}>{new Date(`${selectedDate}T12:00:00`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</Typography>
+            {(leavesByDate[selectedDate] || []).length ? leavesByDate[selectedDate].map((leave) => (
+              <Box key={leave.id} onClick={() => onAction("leave-detail", leave)} sx={{ mt: 1, p: 1, borderLeft: `3px solid ${leave.status === "Approved" ? "#54845f" : "#c98554"}`, background: "#fff", cursor: "pointer" }}>
+                <Typography sx={{ fontSize: "0.62rem", fontWeight: 700 }}>{leave.type}</Typography>
+                <Typography sx={{ mt: 0.3, fontSize: "0.57rem", color: "#78837b" }}>{leave.status} · {leave.days} {leave.days === 1 ? "day" : "days"}</Typography>
+              </Box>
+            )) : <Typography sx={{ mt: 1, fontSize: "0.6rem", color: "#89948c" }}>No leave scheduled for this day.</Typography>}
+          </Box>
+        </Box>
+      </Panel>
 
       {/* ── Requests table ────────────────────────────── */}
       <Panel
@@ -202,7 +288,9 @@ export default function TimeOffPage({ leaves, onAction, onCancel }) {
                 >
                   <TableCell>
                     <Typography
-                      sx={{ fontSize: "0.65rem", fontWeight: 600, color: "#354138" }}
+                      component="button"
+                      onClick={() => onAction("leave-detail", leave)}
+                      sx={{ p: 0, border: 0, background: "transparent", textAlign: "left", cursor: "pointer", fontSize: "0.65rem", fontWeight: 600, color: "#354138", "&:hover": { color: "primary.main", textDecoration: "underline" } }}
                     >
                       {leave.type}
                     </Typography>
@@ -235,7 +323,7 @@ export default function TimeOffPage({ leaves, onAction, onCancel }) {
                     {leave.status === "Pending" && (
                       <Box
                         component="button"
-                        onClick={() => onCancel(leave.id)}
+                        onClick={() => onCancel(leave)}
                         sx={{
                           px: 0.9,
                           py: 0.4,

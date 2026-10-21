@@ -1,18 +1,25 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Box,
   Typography,
   Stack,
   TextField,
   InputAdornment,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
 } from "@mui/material";
 import {
   Download as ArrowDownToLine,
   Description as FileText,
   Search,
+  UploadFile,
+  Close,
+  Delete,
 } from "@mui/icons-material";
 import { documents as seedDocuments } from "../data/peopleHubData.js";
-import { Badge, EmptyState, PageHeader } from "../components/PortalUI.jsx";
+import { Badge, Button, EmptyState, PageHeader } from "../components/PortalUI.jsx";
 
 function downloadFile(name, content) {
   const url = URL.createObjectURL(new Blob([content], { type: "text/plain" }));
@@ -23,25 +30,36 @@ function downloadFile(name, content) {
   URL.revokeObjectURL(url);
 }
 
-export default function DocumentsPage() {
+export default function DocumentsPage({ uploadedDocuments = [], onUpload, onDelete }) {
   const [category, setCategory] = useState("All documents");
   const [query, setQuery] = useState("");
+  const [preview, setPreview] = useState(null);
+  const fileInput = useRef(null);
+  const documents = [
+    ...seedDocuments,
+    ...uploadedDocuments.map((document) => ({
+      ...document,
+      category: "My uploads",
+      updated: `Uploaded ${document.uploaded}`,
+      uploaded: true,
+    })),
+  ];
 
   const categories = [
     "All documents",
-    ...new Set(seedDocuments.map((d) => d.category)),
+    ...new Set(documents.map((d) => d.category)),
   ];
 
   const filtered = useMemo(
     () =>
-      seedDocuments.filter(
+      documents.filter(
         (document) =>
           (category === "All documents" || document.category === category) &&
           `${document.name} ${document.category}`
             .toLowerCase()
             .includes(query.toLowerCase())
       ),
-    [category, query]
+    [category, query, uploadedDocuments]
   );
 
   const colorPalette = [
@@ -57,6 +75,23 @@ export default function DocumentsPage() {
         eyebrow="YOUR REFERENCE LIBRARY"
         title="Documents"
         description="Company policies, benefits and useful forms in one place."
+        action={
+          <>
+            <input
+              ref={fileInput}
+              type="file"
+              multiple
+              hidden
+              onChange={(event) => {
+                if (event.target.files?.length) onUpload(Array.from(event.target.files));
+                event.target.value = "";
+              }}
+            />
+            <Button icon={UploadFile} onClick={() => fileInput.current?.click()}>
+              Upload documents
+            </Button>
+          </>
+        }
       />
 
       <Stack
@@ -82,12 +117,14 @@ export default function DocumentsPage() {
               "&.Mui-focused fieldset": { borderColor: "#9eb9a7" },
             },
           }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search sx={{ fontSize: 16, color: "#8d9890" }} />
-              </InputAdornment>
-            ),
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search sx={{ fontSize: 16, color: "#8d9890" }} />
+                </InputAdornment>
+              ),
+            },
           }}
         />
 
@@ -145,7 +182,7 @@ export default function DocumentsPage() {
           const tone = colorPalette[index % 4];
           return (
             <Box
-              key={document.name}
+              key={document.id || document.name}
               sx={{
                 display: "flex",
                 flexDirection: "column",
@@ -199,7 +236,7 @@ export default function DocumentsPage() {
                   lineHeight: 1.6,
                 }}
               >
-                {document.description}
+                  {document.description || "Uploaded by you."}
               </Typography>
 
               <Stack
@@ -218,12 +255,10 @@ export default function DocumentsPage() {
                 <span>{document.updated}</span>
                 <Box
                   component="button"
-                  onClick={() =>
-                    downloadFile(
-                      `${document.name.toLowerCase().replaceAll(" ", "-")}.txt`,
-                      `${document.name}\n\n${document.description}\n\nSample PeopleHub document.`
-                    )
-                  }
+                  onClick={() => document.uploaded ? setPreview(document) : downloadFile(
+                    `${document.name.toLowerCase().replaceAll(" ", "-")}.txt`,
+                    `${document.name}\n\n${document.description}\n\nSample PeopleHub document.`
+                  )}
                   sx={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -237,13 +272,38 @@ export default function DocumentsPage() {
                     cursor: "pointer",
                   }}
                 >
-                  <ArrowDownToLine sx={{ fontSize: 15 }} /> Download
+                  <ArrowDownToLine sx={{ fontSize: 15 }} /> {document.uploaded ? "Open" : "Download"}
                 </Box>
+                {document.uploaded && (
+                  <IconButton aria-label={`Remove ${document.name}`} onClick={() => onDelete(document.id)} size="small" sx={{ color: "#8d9890" }}>
+                    <Delete sx={{ fontSize: 15 }} />
+                  </IconButton>
+                )}
               </Stack>
             </Box>
           );
         })}
       </Box>
+
+      <Dialog open={Boolean(preview)} onClose={() => setPreview(null)} fullWidth maxWidth="md">
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "Manrope", fontSize: "0.9rem", fontWeight: 700 }}>
+          {preview?.name}
+          <IconButton aria-label="Close document preview" onClick={() => setPreview(null)} size="small"><Close fontSize="small" /></IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ minHeight: 240, display: "grid", placeItems: "center" }}>
+          {preview?.type?.startsWith("image/") ? (
+            <Box component="img" src={preview.data} alt={preview.name} sx={{ maxWidth: "100%", maxHeight: "65vh", objectFit: "contain" }} />
+          ) : preview?.type === "application/pdf" ? (
+            <Box component="iframe" title={preview.name} src={preview.data} sx={{ width: "100%", height: "65vh", border: 0 }} />
+          ) : (
+            <Stack alignItems="center" spacing={1.2}>
+              <FileText sx={{ fontSize: 34, color: "#66806a" }} />
+              <Typography sx={{ color: "#78837b", fontSize: "0.7rem" }}>Preview is not available for this file type.</Typography>
+              <Box component="a" href={preview?.data} download={preview?.name} sx={{ color: "#416b4d", fontSize: "0.7rem", fontWeight: 700 }}>Download file</Box>
+            </Stack>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {filtered.length === 0 && (
         <EmptyState

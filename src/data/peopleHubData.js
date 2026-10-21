@@ -6,6 +6,7 @@ export const navigation = [
   { id: "pay", label: "Pay", icon: "WalletCards", group: "Company" },
   { id: "documents", label: "Documents", icon: "Files", group: "Company" },
   { id: "support", label: "HR support", icon: "LifeBuoy", group: "Company" },
+  { id: "organization", label: "Organization chart", icon: "AccountTree", group: "Company" },
 ];
 
 export const employees = [
@@ -18,9 +19,9 @@ export const employees = [
 ];
 
 export const leaveRequests = [
-  { id: "LV-204", type: "Casual leave", start: "Oct 23, 2026", end: "Oct 23, 2026", days: 1, status: "Approved", requested: "Oct 02, 2026" },
-  { id: "LV-203", type: "Sick leave", start: "Oct 15, 2026", end: "Oct 16, 2026", days: 2, status: "Pending", requested: "Oct 09, 2026" },
-  { id: "LV-198", type: "Casual leave", start: "Sep 04, 2026", end: "Sep 04, 2026", days: 1, status: "Approved", requested: "Aug 27, 2026" },
+  { id: "LV-204", type: "Casual leave", start: "Oct 23, 2026", end: "Oct 23, 2026", days: 1, note: "Family appointment outside the city.", status: "Approved", requested: "Oct 02, 2026" },
+  { id: "LV-203", type: "Sick leave", start: "Oct 15, 2026", end: "Oct 16, 2026", days: 2, note: "Recovering from a seasonal illness.", status: "Pending", requested: "Oct 09, 2026" },
+  { id: "LV-198", type: "Casual leave", start: "Sep 04, 2026", end: "Sep 04, 2026", days: 1, note: "Personal errands.", status: "Approved", requested: "Aug 27, 2026" },
 ];
 
 export const attendanceDays = [
@@ -43,7 +44,12 @@ export const documents = [
   { name: "Remote work policy", category: "Policies", updated: "Updated Aug 28, 2026", description: "Guidelines for working remotely and requesting equipment." },
   { name: "Tax declaration form", category: "Payroll", updated: "Updated Apr 02, 2026", description: "Annual tax declaration and investment proof details." },
   { name: "Benefits overview", category: "Benefits", updated: "Updated Jan 15, 2026", description: "Health, wellbeing and employee benefit information." },
-  { name: "Expense reimbursement guide", category: "Finance", updated: "Updated Jun 20, 2026", description: "How to submit and track business expense claims." },
+];
+
+export const holidays = [
+  { name: "Diwali", date: "Nov 08, 2026", description: "Festival of Lights" },
+  { name: "Christmas Day", date: "Dec 25, 2026", description: "Company holiday" },
+  { name: "New Year's Day", date: "Jan 01, 2027", description: "Company holiday" },
 ];
 
 export const tickets = [
