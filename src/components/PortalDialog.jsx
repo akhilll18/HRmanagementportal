@@ -15,6 +15,9 @@ import { Close as X } from "@mui/icons-material";
 import { Button } from "./PortalUI.jsx";
 import { theme } from "../theme.js";
 
+const NEW_DEPARTMENT = "__new_department__";
+const EMPTY_DEPARTMENTS = [];
+
 const configs = {
   employee: {
     title: "Add a teammate",
@@ -27,9 +30,16 @@ const configs = {
         name: "department",
         label: "Department",
         type: "select",
-        options: ["Engineering", "People", "Finance", "Operations", "Design", "Marketing"],
+        required: true,
       },
       { name: "role", label: "Job title", required: true },
+      { name: "joined", label: "Date of joining", type: "date", required: true },
+      {
+        name: "employmentType",
+        label: "Employment type",
+        type: "select",
+        options: ["Full-time", "Part-time", "Intern"],
+      },
     ],
   },
   leave: {
@@ -71,7 +81,7 @@ const configs = {
   },
 };
 
-export default function PortalDialog({ dialog, onClose, onSubmit }) {
+export default function PortalDialog({ dialog, onClose, onSubmit, departments = EMPTY_DEPARTMENTS, onDeleteEmployee }) {
   const [values, setValues] = useState({});
 
   // Reset values whenever a new dialog opens
@@ -83,12 +93,14 @@ export default function PortalDialog({ dialog, onClose, onSubmit }) {
           f.name === "type" && dialog.data?.type
             ? dialog.data.type
             : f.type === "select"
-              ? f.options[0]
-              : "";
+              ? (f.name === "department" ? departments[0] || "" : f.options[0])
+              : f.name === "joined"
+                ? new Date().toISOString().slice(0, 10)
+                : "";
       });
       setValues(init);
     }
-  }, [dialog]);
+  }, [dialog, departments]);
 
   if (!dialog) return null;
 
@@ -205,6 +217,16 @@ export default function PortalDialog({ dialog, onClose, onSubmit }) {
               {person.department}
             </Typography>
 
+            <Typography sx={{ fontSize: "0.65rem", color: "#89948c" }}>Date of joining</Typography>
+            <Typography sx={{ fontSize: "0.7rem", color: "#465249", fontWeight: 600 }}>
+              {person.joined || "Not provided"}
+            </Typography>
+
+            <Typography sx={{ fontSize: "0.65rem", color: "#89948c" }}>Employment type</Typography>
+            <Typography sx={{ fontSize: "0.7rem", color: "#465249", fontWeight: 600 }}>
+              {person.employmentType || "Full-time"}
+            </Typography>
+
             <Typography sx={{ fontSize: "0.65rem", color: "#89948c" }}>Status</Typography>
             <Typography sx={{ fontSize: "0.7rem", color: "#465249", fontWeight: 600 }}>
               {person.status || "Active"}
@@ -217,9 +239,33 @@ export default function PortalDialog({ dialog, onClose, onSubmit }) {
         </DialogContent>
 
         <DialogActions sx={{ p: "0 20px 16px" }}>
+          {dialog.type === "person" && (
+            <Button variant="secondary" onClick={() => onDeleteEmployee(person)} sx={{ mr: "auto", color: "#a54e45", borderColor: "#efd8d4" }}>
+              Delete employee
+            </Button>
+          )}
           <Button variant="secondary" onClick={onClose}>
             Close
           </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
+
+  if (dialog.type === "delete-employee") {
+    return (
+      <Dialog open onClose={onClose} PaperProps={{ sx: { width: 420, maxWidth: "100%", borderRadius: 1.5 } }}>
+        <DialogTitle sx={{ fontFamily: "Manrope", fontWeight: 700, fontSize: "0.95rem", color: "#2c382f" }}>
+          Delete employee?
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: "#78837b", fontSize: "0.7rem" }}>
+            This will permanently remove {dialog.data?.name} from the employee directory and organization chart.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: "0 20px 16px" }}>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => onSubmit("delete-employee")} sx={{ background: "#a54e45", "&:hover": { background: "#873d36" } }}>Delete employee</Button>
         </DialogActions>
       </Dialog>
     );
@@ -338,29 +384,48 @@ export default function PortalDialog({ dialog, onClose, onSubmit }) {
                 </Typography>
 
                 {field.type === "select" ? (
-                  <TextField
-                    select
-                    fullWidth
-                    size="small"
-                    value={values[field.name] || ""}
-                    onChange={(e) => setField(field.name, e.target.value)}
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        fontSize: "0.7rem",
-                        borderRadius: 1,
-                        "& fieldset": { borderColor: "#e0e6e0" },
-                        "&:hover fieldset": { borderColor: "#9eb9a7" },
-                        "&.Mui-focused fieldset": { borderColor: "#9eb9a7" },
-                      },
-                      "& .MuiInputBase-input": { py: 1, px: 1.2 },
-                    }}
-                  >
-                    {field.options.map((opt) => (
-                      <MenuItem key={opt} value={opt} sx={{ fontSize: "0.7rem" }}>
-                        {opt}
-                      </MenuItem>
-                    ))}
-                  </TextField>
+                  <>
+                    <TextField
+                      select
+                      fullWidth
+                      size="small"
+                      required={field.required}
+                      value={values[field.name] || ""}
+                      onChange={(e) => setField(field.name, e.target.value)}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          fontSize: "0.7rem",
+                          borderRadius: 1,
+                          "& fieldset": { borderColor: "#e0e6e0" },
+                          "&:hover fieldset": { borderColor: "#9eb9a7" },
+                          "&.Mui-focused fieldset": { borderColor: "#9eb9a7" },
+                        },
+                        "& .MuiInputBase-input": { py: 1, px: 1.2 },
+                      }}
+                    >
+                      {(field.name === "department" ? departments : field.options).map((opt) => (
+                        <MenuItem key={opt} value={opt} sx={{ fontSize: "0.7rem" }}>
+                          {opt}
+                        </MenuItem>
+                      ))}
+                      {field.name === "department" && (
+                        <MenuItem value={NEW_DEPARTMENT} sx={{ fontSize: "0.7rem", color: "#47765a", fontWeight: 700 }}>
+                          Add new department...
+                        </MenuItem>
+                      )}
+                    </TextField>
+                    {field.name === "department" && values.department === NEW_DEPARTMENT && (
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="New department name"
+                        required
+                        value={values.newDepartment || ""}
+                        onChange={(event) => setField("newDepartment", event.target.value)}
+                        sx={{ mt: 1, "& .MuiInputBase-root, & .MuiInputLabel-root": { fontSize: "0.7rem" } }}
+                      />
+                    )}
+                  </>
                 ) : field.type === "textarea" ? (
                   <TextField
                     fullWidth

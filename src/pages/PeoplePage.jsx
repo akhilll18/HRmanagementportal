@@ -28,7 +28,7 @@ import {
   StatCard,
 } from "../components/PortalUI.jsx";
 
-export default function PeoplePage({ people, query, onAction }) {
+export default function PeoplePage({ people, departments: departmentOptions = [], query, onAction }) {
   const [search, setSearch] = useState(query || "");
   const [department, setDepartment] = useState("All departments");
   const [status, setStatus] = useState("All statuses");
@@ -37,7 +37,7 @@ export default function PeoplePage({ people, query, onAction }) {
 
   const departments = [
     "All departments",
-    ...new Set(people.map((person) => person.department)),
+    ...new Set([...departmentOptions, ...people.map((person) => person.department).filter(Boolean)]),
   ];
 
   const filtered = useMemo(
@@ -55,13 +55,15 @@ export default function PeoplePage({ people, query, onAction }) {
 
   function exportDirectory() {
     const content = [
-      ["ID", "Name", "Role", "Department", "Email", "Status"],
-      ...filtered.map(({ id, name, role, department: team, email, status: state }) => [
+      ["ID", "Name", "Role", "Department", "Email", "Employment type", "Start date", "Status"],
+      ...filtered.map(({ id, name, role, department: team, email, employmentType, joined, status: state }) => [
         id,
         name,
         role,
         team,
         email,
+        employmentType || "Full-time",
+        joined || "",
         state,
       ]),
     ]
@@ -241,12 +243,13 @@ export default function PeoplePage({ people, query, onAction }) {
         </Stack>
 
         <TableContainer sx={{ overflowX: "auto" }}>
-          <Table sx={{ minWidth: 720 }}>
+          <Table sx={{ minWidth: 820 }}>
             <TableHead>
               <TableRow>
                 <TableCell>TEAMMATE</TableCell>
                 <TableCell>DEPARTMENT</TableCell>
                 <TableCell>WORK EMAIL</TableCell>
+                <TableCell>WORK TYPE</TableCell>
                 <TableCell>STATUS</TableCell>
                 <TableCell>START DATE</TableCell>
               </TableRow>
@@ -256,11 +259,14 @@ export default function PeoplePage({ people, query, onAction }) {
                 <TableRow key={person.id} sx={{ "&:hover": { background: "#fcfdfb" } }}>
                   <TableCell>
                     <Stack
+                      component="button"
+                      type="button"
+                      aria-label={`View ${person.name}'s employee details`}
                       direction="row"
                       alignItems="center"
                       spacing={1.1}
                       onClick={() => onAction("person", person)}
-                      sx={{ cursor: "pointer", minWidth: 190 }}
+                      sx={{ cursor: "pointer", minWidth: 190, p: 0, border: 0, background: "transparent", textAlign: "left" }}
                     >
                       <Avatar name={person.name} />
                       <Box>
@@ -297,6 +303,7 @@ export default function PeoplePage({ people, query, onAction }) {
                       {person.email}
                     </Box>
                   </TableCell>
+                  <TableCell sx={{ color: "#78837b" }}>{person.employmentType || "Full-time"}</TableCell>
                   <TableCell>
                     <Badge tone={person.status === "Active" ? "green" : "orange"}>
                       {person.status}

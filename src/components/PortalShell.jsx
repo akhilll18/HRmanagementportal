@@ -31,6 +31,7 @@ import {
   Groups as UsersRound,
   AccountBalanceWallet as WalletCards,
   AccountTree,
+  School,
   Close as X,
 } from "@mui/icons-material";
 import { navigation, notifications } from "../data/peopleHubData.js";
@@ -46,6 +47,7 @@ const iconMap = {
   Files,
   LifeBuoy,
   AccountTree,
+  School,
 };
 const iconNames = { timeoff: "CalendarCheck2" };
 const DRAWER_WIDTH = 250;

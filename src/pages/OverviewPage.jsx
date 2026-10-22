@@ -10,6 +10,7 @@ import {
   AutoAwesome as Sparkles,
   Groups as UsersRound,
   AccountBalanceWallet as WalletCards,
+  EventAvailable,
 } from "@mui/icons-material";
 import { attendanceDays, holidays } from "../data/peopleHubData.js";
 import { theme } from "../theme.js";
@@ -47,7 +48,7 @@ const tasks = [
 
 function formatClockTime(value) {
   return value
-    ? new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    ? new Date(value).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
     : "--:--";
 }
 
@@ -55,11 +56,11 @@ export default function OverviewPage({
   onNavigate,
   onAction,
   checkedIn,
-  clockInAt,
-  clockOutAt,
   onToggle,
   employeeCount,
   pendingLeaves,
+  departmentCount = 0,
+  attendanceRecords = [],
 }) {
   const hour = new Date().getHours();
   const todayLabel = new Date().toLocaleDateString("en-US", {
@@ -69,9 +70,17 @@ export default function OverviewPage({
   });
   const greeting =
     hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const upcomingHolidays = holidays.filter(
-    (holiday) => new Date(`${holiday.date} 12:00:00`) >= new Date()
-  ).slice(0, 3);
+  const upcomingHoliday = holidays
+    .map((holiday) => ({ ...holiday, dateValue: new Date(`${holiday.date} 12:00:00`) }))
+    .filter((holiday) => holiday.dateValue >= new Date())
+    .sort((first, second) => first.dateValue - second.dateValue)[0];
+
+  // Get today's records to show in the chips
+  const todayEntries = attendanceRecords.filter(r => {
+    const d = new Date(r.timestamp);
+    const today = new Date();
+    return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+  }).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
   return (
     <>
@@ -106,7 +115,7 @@ export default function OverviewPage({
           },
         }}
       >
-        <Box sx={{ position: "relative", zIndex: 1 }}>
+        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
           <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
             <Box
               sx={{
@@ -151,16 +160,79 @@ export default function OverviewPage({
             </Box>
           </Typography>
 
-          <Typography sx={{ fontSize: "0.7rem", color: "#d4e0d7" }}>
+          <Typography sx={{ fontSize: "0.7rem", color: "#d4e0d7", mb: 2.5 }}>
             Your workday, your people, all in one place.
           </Typography>
+
+          {/* Today's Entries Chips in Banner - Now with horizontal scroll */}
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1,
+              overflowX: "auto",
+              pb: 1, // padding bottom for the scrollbar
+              "&::-webkit-scrollbar": { height: 6 },
+              "&::-webkit-scrollbar-track": { background: "transparent" },
+              "&::-webkit-scrollbar-thumb": { background: "rgba(255,255,255,0.2)", borderRadius: 3 },
+            }}
+          >
+            {todayEntries.length > 0 ? (
+              todayEntries.map((record) => {
+                const isIn = record.type === "Tap in";
+                return (
+                  <Box
+                    key={record.id}
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 0.8,
+                      px: 1.2,
+                      py: 0.5,
+                      borderRadius: 1,
+                      background: "#fff",
+                      border: `1px solid ${isIn ? "#c8e6c9" : "#ffcdd2"}`,
+                      color: isIn ? "#2e7d32" : "#c62828",
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        background: isIn ? "#4caf50" : "#f44336",
+                      }}
+                    />
+                    {formatClockTime(record.timestamp)}
+                  </Box>
+                );
+              })
+            ) : (
+              <Typography sx={{ fontSize: "0.65rem", color: "#d4e0d7", fontStyle: "italic" }}>
+                No entries yet today.
+              </Typography>
+            )}
+          </Box>
         </Box>
 
         <Stack
           direction={{ xs: "column", sm: "row" }}
           alignItems="center"
           spacing={2}
-          sx={{ position: "relative", zIndex: 1, mt: { xs: 2, sm: 0 } }}
+          sx={{
+            position: "relative",
+            zIndex: 1,
+            mt: { xs: 2, sm: 0 },
+            ml: { sm: 2.5 },
+            pl: { sm: 2.5 },
+            pt: { xs: 1.5, sm: 0 },
+            borderLeft: { sm: "1px solid rgba(255,255,255,0.24)" },
+            borderTop: { xs: "1px solid rgba(255,255,255,0.24)", sm: "none" },
+            flexShrink: 0,
+          }}
         >
           <Box
             sx={{
@@ -240,10 +312,10 @@ export default function OverviewPage({
             </Stack>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={0.7}>
               <Button variant="light" icon={Clock3} disabled={checkedIn} onClick={onToggle} sx={{ whiteSpace: "nowrap", minWidth: "max-content" }}>
-                Clock in{clockInAt ? ` · ${formatClockTime(clockInAt)}` : ""}
+                Tap in
               </Button>
               <Button variant="light" icon={Check} disabled={!checkedIn} onClick={onToggle} sx={{ whiteSpace: "nowrap", minWidth: "max-content" }}>
-                Clock out{clockOutAt ? ` · ${formatClockTime(clockOutAt)}` : ""}
+                Tap out
               </Button>
             </Stack>
           </Stack>
@@ -302,7 +374,8 @@ export default function OverviewPage({
           display: "grid",
           gridTemplateColumns: {
             xs: "repeat(2, minmax(0, 1fr))",
-            sm: "repeat(4, minmax(0, 1fr))",
+            sm: "repeat(3, minmax(0, 1fr))",
+            lg: "repeat(5, minmax(0, 1fr))",
           },
           gap: 1.5,
         }}
@@ -310,7 +383,7 @@ export default function OverviewPage({
         <StatCard
           label="Team members"
           value={employeeCount}
-          note="Across 5 departments"
+          note={`Across ${departmentCount || 0} departments`}
           icon={UsersRound}
           tone="green"
           onClick={() => onNavigate("people")}
@@ -330,6 +403,13 @@ export default function OverviewPage({
           icon={WalletCards}
           tone="blue"
           onClick={() => onNavigate("pay")}
+        />
+        <StatCard
+          label="Upcoming holiday"
+          value={upcomingHoliday ? upcomingHoliday.dateValue.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "--"}
+          note={upcomingHoliday ? upcomingHoliday.name : "No upcoming holidays"}
+          icon={EventAvailable}
+          tone="blue"
         />
         <StatCard
           label="Open requests"
@@ -724,26 +804,6 @@ export default function OverviewPage({
           ))}
         </Panel>
       </Box>
-
-      <Panel title="Upcoming holidays" subtitle="Company days off ahead" sx={{ mt: 1.6 }}>
-        {upcomingHolidays.length ? upcomingHolidays.map((holiday, index) => {
-          const date = new Date(`${holiday.date} 12:00:00`);
-          const daysAway = Math.ceil((date - new Date()) / 86400000);
-          return (
-            <Stack key={holiday.name} direction="row" alignItems="center" spacing={1.2} sx={{ px: 1.8, py: 1.2, borderBottom: index < upcomingHolidays.length - 1 ? "1px solid #f0f2ef" : "none" }}>
-              <Box sx={{ width: 37, height: 40, border: "1px solid #e6ece5", borderRadius: 0.6, background: "#f8faf7", color: "#416b4d", display: "grid", alignContent: "center", justifyItems: "center", flexShrink: 0 }}>
-                <Typography sx={{ fontFamily: "Manrope", fontWeight: 700, fontSize: "0.85rem" }}>{date.getDate()}</Typography>
-                <Typography sx={{ fontSize: "0.45rem", fontWeight: 700 }}>{date.toLocaleDateString("en-US", { month: "short" }).toUpperCase()}</Typography>
-              </Box>
-              <Box sx={{ flex: 1 }}>
-                <Typography sx={{ fontSize: "0.65rem", fontWeight: 600 }}>{holiday.name}</Typography>
-                <Typography sx={{ mt: 0.3, color: "#8a948d", fontSize: "0.6rem" }}>{holiday.description}</Typography>
-              </Box>
-              <Typography sx={{ color: "#6f8a73", fontSize: "0.58rem", fontWeight: 600 }}>{daysAway === 0 ? "Today" : `In ${daysAway} days`}</Typography>
-            </Stack>
-          );
-        }) : <Typography sx={{ p: 2, color: "#89948c", fontSize: "0.65rem" }}>No upcoming holidays listed.</Typography>}
-      </Panel>
     </>
   );
 }

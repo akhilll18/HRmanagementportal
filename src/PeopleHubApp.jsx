@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Box, Typography, Stack, IconButton as MuiIconButton } from "@mui/material";
 import { Check, Close as X } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
@@ -14,6 +14,7 @@ import PayPage from "./pages/PayPage.jsx";
 import DocumentsPage from "./pages/DocumentsPage.jsx";
 import SupportPage from "./pages/SupportPage.jsx";
 import OrganizationPage from "./pages/OrganizationPage.jsx";
+import LearningPage from "./pages/LearningPage.jsx";
 
 import {
   employees as employeeSeed,
@@ -30,10 +31,25 @@ function load(key, fallback) {
   }
 }
 
+function loadAttendanceRecords() {
+  const savedRecords = load("attendance-records", null);
+  if (Array.isArray(savedRecords)) return savedRecords;
+  const clockInAt = load("clock-in-at", null);
+  const clockOutAt = load("clock-out-at", null);
+  return [
+    clockInAt && { id: `legacy-in-${clockInAt}`, type: "Tap in", timestamp: clockInAt },
+    clockOutAt && { id: `legacy-out-${clockOutAt}`, type: "Tap out", timestamp: clockOutAt },
+  ].filter(Boolean);
+}
+
 export default function PeopleHubApp() {
   const navigate = useNavigate();
   const [page, setPage] = useState("overview");
   const [people, setPeople] = useState(() => load("employees", employeeSeed));
+  const [departments, setDepartments] = useState(() =>
+    load("departments", ["Engineering", "People", "Finance", "Operations", "Design", "Marketing"])
+  );
+  const [trainingVideos, setTrainingVideos] = useState(() => load("training-videos", []));
   const [leaves, setLeaves] = useState(() => load("leaves", leaveSeed));
   const [supportTickets, setSupportTickets] = useState(() =>
     load("tickets", ticketSeed)
@@ -42,6 +58,7 @@ export default function PeopleHubApp() {
   const [checkedIn, setCheckedIn] = useState(() => load("checked-in", false));
   const [clockInAt, setClockInAt] = useState(() => load("clock-in-at", null));
   const [clockOutAt, setClockOutAt] = useState(() => load("clock-out-at", null));
+  const [attendanceRecords, setAttendanceRecords] = useState(loadAttendanceRecords);
   const [dialog, setDialog] = useState(null);
   const [notice, setNotice] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -50,12 +67,15 @@ export default function PeopleHubApp() {
   useEffect(() => {
     const values = {
       employees: people,
+      departments,
+      "training-videos": trainingVideos,
       leaves,
       tickets: supportTickets,
       "user-documents": userDocuments,
       "checked-in": checkedIn,
       "clock-in-at": clockInAt,
       "clock-out-at": clockOutAt,
+      "attendance-records": attendanceRecords,
     };
     for (const [key, value] of Object.entries(values)) {
       try {
@@ -64,7 +84,15 @@ export default function PeopleHubApp() {
         /* Browser storage may be disabled. */
       }
     }
-  }, [people, leaves, supportTickets, userDocuments, checkedIn, clockInAt, clockOutAt]);
+  }, [people, departments, trainingVideos, leaves, supportTickets, userDocuments, checkedIn, clockInAt, clockOutAt, attendanceRecords]);
+
+  const availableDepartments = useMemo(
+    () => [...new Set([
+      ...departments,
+      ...people.map((person) => person.department).filter(Boolean),
+    ])],
+    [departments, people]
+  );
 
   // Auto-dismiss toast after 3.2s
   useEffect(() => {
@@ -76,21 +104,45 @@ export default function PeopleHubApp() {
   // ── Dialog submission handler ───────────────────────
   function submitAction(type, values) {
     if (type === "employee") {
-      const id = `EMP${String(people.length + 1).padStart(3, "0")}`;
+      const department = values.department === "__new_department__"
+        ? values.newDepartment.trim()
+        : values.department;
+      if (!department) {
+        setNotice("Choose an existing department or enter a new one.");
+        return;
+      }
+      if (values.department === "__new_department__" && availableDepartments.some((item) => item.toLowerCase() === department.toLowerCase())) {
+        setNotice("That department already exists. Choose it from the department list.");
+        return;
+      }
+      const nextId = Math.max(
+        0,
+        ...people.map((person) => Number(person.id.replace(/\D/g, "")) || 0)
+      ) + 1;
+      const id = `EMP${String(nextId).padStart(3, "0")}`;
       setPeople((current) => [
         ...current,
         {
           ...values,
+          department,
           id,
           status: "Active",
-          joined: new Date().toLocaleDateString("en-US", {
+          joined: new Date(`${values.joined}T12:00:00`).toLocaleDateString("en-US", {
             month: "short",
             day: "2-digit",
             year: "numeric",
           }),
         },
       ]);
+      if (values.department === "__new_department__") {
+        setDepartments((current) => [...current, department]);
+      }
       setNotice(`${values.name} was added to the directory.`);
+    } else if (type === "delete-employee") {
+      setPeople((current) => current.filter((person) => person.id !== dialog.data.id));
+      setDialog(null);
+      setNotice(`${dialog.data.name} was removed from the directory.`);
+      return;
     } else if (type === "leave") {
       const start = new Date(`${values.start}T12:00:00`);
       const end = new Date(`${values.end}T12:00:00`);
@@ -157,6 +209,11 @@ export default function PeopleHubApp() {
   // ── Clock toggle ────────────────────────────────────
   function toggleCheckIn() {
     const timestamp = new Date().toISOString();
+    const type = checkedIn ? "Tap out" : "Tap in";
+    setAttendanceRecords((current) => [
+      { id: `ATT-${Date.now()}`, type, timestamp },
+      ...current,
+    ]);
     if (checkedIn) {
       setClockOutAt(timestamp);
     } else {
@@ -165,6 +222,45 @@ export default function PeopleHubApp() {
     }
     setCheckedIn((value) => !value);
     setNotice(checkedIn ? "You are now clocked out." : "You are now clocked in.");
+  }
+
+  // ── Learning upload (accepts image OR video) ────────
+  function uploadTrainingVideo(file, details) {
+    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+      setNotice("Choose an image or video file to upload.");
+      return;
+    }
+    const storedBytes = trainingVideos.reduce(
+      (total, video) => total + (video.size || 0),
+      0
+    );
+    if (storedBytes + file.size > 2 * 1024 * 1024) {
+      setNotice("Training media is limited to 2 MB in this browser demo.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const video = {
+        id: `TRAIN-${Date.now()}`,
+        title: details.title,
+        description: details.description,
+        category: details.category,
+        fileName: file.name,
+        size: file.size,
+        type: file.type,
+        data: reader.result,
+        uploaded: new Date().toLocaleDateString("en-US", {
+          month: "short",
+          day: "2-digit",
+          year: "numeric",
+        }),
+      };
+      setTrainingVideos((current) => [video, ...current]);
+      setNotice(`"${video.title}" was added to the learning library.`);
+    };
+    reader.onerror = () =>
+      setNotice("The file could not be read. Please try another file.");
+    reader.readAsDataURL(file);
   }
 
   // ── Search jump ─────────────────────────────────────
@@ -190,6 +286,7 @@ export default function PeopleHubApp() {
       content = (
         <PeoplePage
           people={people}
+          departments={availableDepartments}
           query={searchQuery}
           onAction={(type, data) => setDialog({ type, data })}
         />
@@ -201,6 +298,7 @@ export default function PeopleHubApp() {
           checkedIn={checkedIn}
           clockInAt={clockInAt}
           clockOutAt={clockOutAt}
+          attendanceRecords={attendanceRecords}
           onToggle={toggleCheckIn}
         />
       );
@@ -248,7 +346,20 @@ export default function PeopleHubApp() {
       content = (
         <OrganizationPage
           people={people}
+          departments={availableDepartments}
           onAction={(type) => setDialog({ type })}
+        />
+      );
+      break;
+    case "learning":
+      content = (
+        <LearningPage
+          videos={trainingVideos}
+          onUpload={uploadTrainingVideo}
+          onDelete={(id) => {
+            setTrainingVideos((current) => current.filter((video) => video.id !== id));
+            setNotice("Item was removed from the learning library.");
+          }}
         />
       );
       break;
@@ -258,13 +369,11 @@ export default function PeopleHubApp() {
           onNavigate={setPage}
           onAction={(type) => setDialog({ type })}
           checkedIn={checkedIn}
-          clockInAt={clockInAt}
-          clockOutAt={clockOutAt}
           onToggle={toggleCheckIn}
           employeeCount={people.length}
           pendingLeaves={leaves.filter((item) => item.status === "Pending").length}
-           clockInAt={clockInAt}
-           clockOutAt={clockOutAt}
+          departmentCount={availableDepartments.length}
+          attendanceRecords={attendanceRecords}
         />
       );
   }
@@ -285,6 +394,8 @@ export default function PeopleHubApp() {
         dialog={dialog}
         onClose={() => setDialog(null)}
         onSubmit={submitAction}
+        departments={availableDepartments}
+        onDeleteEmployee={(person) => setDialog({ type: "delete-employee", data: person })}
       />
 
       {notice && (

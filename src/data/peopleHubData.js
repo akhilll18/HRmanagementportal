@@ -5,17 +5,18 @@ export const navigation = [
   { id: "timeoff", label: "Request leave", icon: "CalendarDays", group: "Workspace" },
   { id: "pay", label: "Pay", icon: "WalletCards", group: "Company" },
   { id: "documents", label: "Documents", icon: "Files", group: "Company" },
+  { id: "learning", label: "Learning", icon: "School", group: "Company" },
   { id: "support", label: "HR support", icon: "LifeBuoy", group: "Company" },
   { id: "organization", label: "Organization chart", icon: "AccountTree", group: "Company" },
 ];
 
 export const employees = [
-  { id: "EMP001", name: "Akhil Reddy", role: "MuleSoft Developer", department: "Engineering", email: "akhil@example.com", status: "Active", joined: "Jun 12, 2025" },
+  { id: "EMP001", name: "Akhil Reddy", role: "Java Developer", department: "Engineering", email: "akhil@example.com", status: "Active", joined: "Jun 12, 2025" },
   { id: "EMP002", name: "Swetha Reddy", role: "People Operations Partner", department: "People", email: "swetha@example.com", status: "Active", joined: "Jan 03, 2024" },
-  { id: "EMP003", name: "Rahul Kumar", role: "Senior Accountant", department: "Finance", email: "rahul@example.com", status: "Active", joined: "Sep 17, 2023" },
-  { id: "EMP004", name: "Ananya Sharma", role: "Software Engineer", department: "Engineering", email: "ananya@example.com", status: "On leave", joined: "Mar 21, 2025" },
-  { id: "EMP005", name: "Vikram Singh", role: "Operations Lead", department: "Operations", email: "vikram@example.com", status: "Active", joined: "Feb 14, 2024" },
-  { id: "EMP006", name: "Priya Nair", role: "Product Designer", department: "Design", email: "priya@example.com", status: "Active", joined: "Nov 06, 2024" },
+  { id: "EMP003", name: "Ashok Kumar", role: "Senior Accountant", department: "Finance", email: "ashok@example.com", status: "Active", joined: "Sep 17, 2023" },
+  { id: "EMP004", name: "kartik", role: "Software Engineer", department: "Engineering", email: "kartik@example.com", status: "On leave", joined: "Mar 21, 2025" },
+  { id: "EMP005", name: "praveen", role: "Operations Lead", department: "Operations", email: "praveen@example.com", status: "Active", joined: "Feb 14, 2024" },
+  { id: "EMP006", name: "vikram", role: "Product Designer", department: "Design", email: "vikram@example.com", status: "Active", joined: "Nov 06, 2024" },
 ];
 
 export const leaveRequests = [

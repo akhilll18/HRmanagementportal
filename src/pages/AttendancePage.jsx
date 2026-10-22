@@ -1,23 +1,76 @@
-import React, { useState } from "react";
-import { Box, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import React, { useState, useMemo } from "react";
+import { Box, Typography, Stack, TextField, MenuItem, Card } from "@mui/material";
 import { AccessTime as Clock3, CalendarMonth, Check } from "@mui/icons-material";
 import { attendanceDays } from "../data/peopleHubData.js";
 import { Button, PageHeader, Panel, StatCard } from "../components/PortalUI.jsx";
 
+// Helper to format time exactly like the real portal (e.g. "17:13")
 function formatClockTime(value) {
   return value
-    ? new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    ? new Date(value).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
     : "--:--";
 }
 
-export default function AttendancePage({ checkedIn, clockInAt, clockOutAt, onToggle }) {
+// Helper to format date for the card header (e.g. "Thursday 22/10/2026")
+function formatFullDate() {
+  const today = new Date();
+  return today.toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+export default function AttendancePage({
+  checkedIn,
+  clockInAt,
+  clockOutAt,
+  attendanceRecords = [],
+  onToggle,
+}) {
   const [range, setRange] = useState("This week");
-  const days = range === "This week" ? attendanceDays : attendanceDays.map((day, index) => ({
-    ...day,
-    date: ["Sep 28", "Sep 29", "Sep 30", "Oct 01", "Oct 02"][index],
-    hours: [7.8, 8.4, 8.1, 7.5, 8.7][index],
-    label: ["7h 48m", "8h 24m", "8h 06m", "7h 30m", "8h 42m"][index],
-  }));
+
+  const days =
+    range === "This week"
+      ? attendanceDays
+      : attendanceDays.map((day, index) => ({
+          ...day,
+          date: ["Sep 28", "Sep 29", "Sep 30", "Oct 01", "Oct 02"][index],
+          hours: [7.8, 8.4, 8.1, 7.5, 8.7][index],
+          label: ["7h 48m", "8h 24m", "8h 06m", "7h 30m", "8h 42m"][index],
+        }));
+
+  // Calculate total hours worked today based on the records
+  const totalWorkMs = useMemo(() => {
+    let totalMs = 0;
+    const todayRecords = attendanceRecords.filter(r => {
+      const d = new Date(r.timestamp);
+      const today = new Date();
+      return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+    }).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    let lastIn = null;
+    for (const record of todayRecords) {
+      if (record.type === "Tap in") lastIn = new Date(record.timestamp);
+      else if (record.type === "Tap out" && lastIn) {
+        totalMs += new Date(record.timestamp) - lastIn;
+        lastIn = null;
+      }
+    }
+    if (lastIn && checkedIn) totalMs += new Date() - lastIn;
+    return totalMs;
+  }, [attendanceRecords, checkedIn]);
+
+  const totalHours = Math.floor(totalWorkMs / 3600000);
+  const totalMins = Math.floor((totalWorkMs % 3600000) / 60000);
+
+  // Get today's records to show in the chips
+  const todayEntries = attendanceRecords.filter(r => {
+    const d = new Date(r.timestamp);
+    const today = new Date();
+    return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+  }).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
   return (
     <>
@@ -25,24 +78,164 @@ export default function AttendancePage({ checkedIn, clockInAt, clockOutAt, onTog
         eyebrow="TIME & ATTENDANCE"
         title="Attendance"
         description="Your hours, your rhythm. Keep track of your work week."
-        action={
-          <Stack direction="row" spacing={0.8}>
-            <Button icon={Clock3} disabled={checkedIn} onClick={onToggle}>
-              Clock in{clockInAt ? ` · ${formatClockTime(clockInAt)}` : ""}
-            </Button>
-            <Button variant="secondary" icon={Check} disabled={!checkedIn} onClick={onToggle}>
-              Clock out{clockOutAt ? ` · ${formatClockTime(clockOutAt)}` : ""}
-            </Button>
-          </Stack>
-        }
       />
 
+      {/* ── Real-time Top Dashboard Card (Matches Screenshot) ── */}
+      <Card sx={{ p: 2.5, mb: 2, borderRadius: 2, border: "1px solid #e5eae5" }}>
+        {/* Header row: Date, Total Work, Total Break, Action Buttons */}
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", md: "center" }}
+          spacing={2}
+          sx={{ mb: 3 }}
+        >
+          {/* Left side: Clock & Totals */}
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <Box
+              sx={{
+                width: 60,
+                height: 60,
+                borderRadius: "50%",
+                background: "#f0f4f0",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <Clock3 sx={{ fontSize: 30, color: "#27614e" }} />
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: "0.7rem", color: "#78827b", fontWeight: 500 }}>
+                {formatFullDate()}
+              </Typography>
+              <Stack direction="row" spacing={4} sx={{ mt: 0.5 }}>
+                <Box>
+                  <Typography sx={{ fontSize: "1.2rem", fontWeight: 700, color: "#202922" }}>
+                    {totalHours}h {totalMins}m
+                  </Typography>
+                  <Typography sx={{ fontSize: "0.6rem", color: "#5689b3", fontWeight: 600 }}>
+                    Total Work Time
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography sx={{ fontSize: "1.2rem", fontWeight: 700, color: "#202922" }}>
+                    0h 0m
+                  </Typography>
+                  <Typography sx={{ fontSize: "0.6rem", color: "#5689b3", fontWeight: 600 }}>
+                    Total Break Time
+                  </Typography>
+                </Box>
+              </Stack>
+            </Box>
+          </Stack>
+
+          {/* Right side: Tap In / Tap Out Buttons */}
+          <Stack direction="row" spacing={2} alignItems="center">
+            {/* Tap In Column */}
+            <Stack alignItems="center" spacing={0.5}>
+              <Button
+                icon={Clock3}
+                disabled={checkedIn}
+                onClick={onToggle}
+                sx={{
+                  background: "#fff",
+                  color: checkedIn ? "#a0a8a2" : "#27614e",
+                  border: "1px solid #e5eae5",
+                  "&:hover": { background: "#f5f7f4" },
+                  minWidth: 80,
+                  fontWeight: 700,
+                  boxShadow: "none"
+                }}
+              >
+                Tap In
+              </Button>
+              <Typography sx={{ fontSize: "0.65rem", fontWeight: 700, color: "#27614e" }}>
+                {formatClockTime(clockInAt)}
+              </Typography>
+            </Stack>
+
+            {/* Tap Out Column */}
+            <Stack alignItems="center" spacing={0.5}>
+              <Button
+                icon={Check}
+                disabled={!checkedIn}
+                onClick={onToggle}
+                sx={{
+                  background: "#ff4d4f",
+                  color: "#fff",
+                  "&:hover": { background: "#d9363e" },
+                  "&:disabled": { background: "#f5f5f5", color: "#bdbdbd" },
+                  minWidth: 80,
+                  fontWeight: 700,
+                  boxShadow: "none"
+                }}
+              >
+                Tap Out
+              </Button>
+              <Typography sx={{ fontSize: "0.65rem", fontWeight: 700, color: "#27614e" }}>
+                {formatClockTime(clockOutAt)}
+              </Typography>
+            </Stack>
+          </Stack>
+        </Stack>
+
+        {/* Divider line */}
+        <Box sx={{ borderTop: "1px solid #edf0ec", pt: 2 }}>
+          <Typography sx={{ fontSize: "0.65rem", fontWeight: 600, color: "#4d594f", mb: 1.5 }}>
+            Today's Entries
+          </Typography>
+
+          {/* Chips Row - Exact match to screenshot */}
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {todayEntries.length > 0 ? (
+              todayEntries.map((record) => {
+                const isIn = record.type === "Tap in";
+                return (
+                  <Box
+                    key={record.id}
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 0.8,
+                      px: 1.2,
+                      py: 0.5,
+                      borderRadius: 1,
+                      background: "#fff",
+                      border: `1px solid ${isIn ? "#c8e6c9" : "#ffcdd2"}`,
+                      color: isIn ? "#2e7d32" : "#c62828",
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        background: isIn ? "#4caf50" : "#f44336",
+                      }}
+                    />
+                    {formatClockTime(record.timestamp)}
+                  </Box>
+                );
+              })
+            ) : (
+              <Typography sx={{ fontSize: "0.65rem", color: "#89948c", fontStyle: "italic" }}>
+                No entries yet today.
+              </Typography>
+            )}
+          </Stack>
+        </Box>
+      </Card>
+
+      {/* ── Stats Grid ── */}
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3, minmax(0, 1fr))" }, gap: 1.5, mb: 2 }}>
         <StatCard label="Today's status" value={checkedIn ? "Working" : "Not started"} note={checkedIn ? `Clocked in at ${formatClockTime(clockInAt)}` : "Your workday has not started"} icon={Clock3} tone="green" />
         <StatCard label="Hours this week" value="41h 06m" note="Target is 40 hours" icon={CalendarMonth} tone="blue" />
         <StatCard label="On-time days" value="18 / 20" note="This month" icon={Check} tone="orange" />
       </Box>
 
+      {/* ── Weekly Chart ── */}
       <Panel
         title="Hours worked"
         subtitle={`${range} · ${range === "This week" ? "Oct 05–09" : "Sep 28–Oct 02"}`}
@@ -68,24 +261,29 @@ export default function AttendancePage({ checkedIn, clockInAt, clockOutAt, onTog
         </Box>
       </Panel>
 
+      {/* ── Bottom details ── */}
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.1fr 0.9fr" }, gap: 1.6 }}>
-        <Panel title="Today" subtitle={new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}>
-          <Stack direction="row" alignItems="center" spacing={1.2} sx={{ px: 2, py: 1.8 }}>
-            <Box sx={{ width: 22, height: 22, borderRadius: "50%", background: "#eaf3eb", display: "grid", placeItems: "center" }}><Box sx={{ width: 7, height: 7, borderRadius: "50%", background: "#5f9668" }} /></Box>
-            <Box sx={{ flex: 1 }}>
-              <Typography sx={{ fontSize: "0.65rem", fontWeight: 600 }}>{clockInAt ? "Clocked in" : "Ready to start"}</Typography>
-              <Typography sx={{ fontSize: "0.6rem", color: "#89948c", mt: 0.4 }}>{clockInAt ? `${formatClockTime(clockInAt)} · Office` : "No check-in recorded yet"}</Typography>
+        <Panel title="Tap history" subtitle="All tap records for your account">
+          {attendanceRecords.length ? (
+            <Box sx={{ maxHeight: 340, overflowY: "auto" }}>
+              {attendanceRecords.map((record) => (
+                <Stack key={record.id} direction="row" alignItems="center" spacing={1.2} sx={{ px: 2, py: 1.25, borderBottom: "1px solid #f0f2ef" }}>
+                  <Box sx={{ width: 22, height: 22, borderRadius: "50%", background: record.type === "Tap in" ? "#eaf3eb" : "#f0f2ef", display: "grid", placeItems: "center" }}>
+                    <Box sx={{ width: 7, height: 7, borderRadius: "50%", background: record.type === "Tap in" ? "#5f9668" : "#839087" }} />
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography sx={{ fontSize: "0.65rem", fontWeight: 600, color: "#465249" }}>{record.type}</Typography>
+                    <Typography sx={{ fontSize: "0.6rem", color: "#89948c", mt: 0.35 }}>
+                      {new Date(record.timestamp).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                    </Typography>
+                  </Box>
+                  <Typography sx={{ fontSize: "0.65rem", fontWeight: 600, color: "#54665a" }}>{formatClockTime(record.timestamp)}</Typography>
+                </Stack>
+              ))}
             </Box>
-            <Typography sx={{ fontSize: "0.65rem", fontWeight: 600, color: "#54665a" }}>{formatClockTime(clockInAt)}</Typography>
-          </Stack>
-          <Stack direction="row" alignItems="center" spacing={1.2} sx={{ px: 2, py: 1.8, borderTop: "1px solid #f0f2ef" }}>
-            <Box sx={{ width: 22, height: 22, borderRadius: "50%", background: "#f0f2ef", display: "grid", placeItems: "center" }}><Box sx={{ width: 7, height: 7, borderRadius: "50%", background: "#aeb7af" }} /></Box>
-            <Box sx={{ flex: 1 }}>
-              <Typography sx={{ fontSize: "0.65rem", fontWeight: 600, color: "#8c968e" }}>Clock out</Typography>
-              <Typography sx={{ fontSize: "0.6rem", color: "#89948c", mt: 0.4 }}>End of your work day</Typography>
-            </Box>
-            <Typography sx={{ fontSize: "0.65rem", fontWeight: 600, color: "#8c968e" }}>{formatClockTime(clockOutAt)}</Typography>
-          </Stack>
+          ) : (
+            <Typography sx={{ p: 2, color: "#89948c", fontSize: "0.65rem" }}>Your tap records will appear here.</Typography>
+          )}
         </Panel>
         <Panel title="Attendance policy" subtitle="A quick reminder">
           <Typography sx={{ p: "15px 15px 8px", color: "#768179", fontSize: "0.65rem", lineHeight: 1.7 }}>Our standard working day is 8 hours, with flexible start times between 8:00 and 10:00 AM. Need to correct a time entry? Reach out to HR support.</Typography>

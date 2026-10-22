@@ -13,9 +13,11 @@ Create a production build with `npm run build`.
 
 ## Workspace areas
 
-- Overview with attendance snapshot, quick links and announcements
-- People directory with search, filters, profile details and CSV export
-- Attendance with clock in/out and week selection
+- Overview with separate tap-in/tap-out controls, quick links and an upcoming-holiday card
+- People directory with search, filters, employee details, onboarding and CSV export
+- Organization chart with employee profiles and deletion; new departments can be created while onboarding an employee
+- Learning library with browser-playable employee training videos and an admin upload form
+- Attendance with a persisted timestamped history of every tap-in/tap-out and week selection
 - Time-off requests, balance, status filters and cancellation
 - Pay history with downloadable CSV summaries
 - Growth goals and hiring pipeline
@@ -31,4 +33,4 @@ Create a production build with `npm run build`.
 - `src/pages/` contains overview, people, work and company pages
 - `src/workspace.css` contains theme tokens, responsive layouts and component styles
 
-This is a local frontend demo. Changes are stored in this browser using `localStorage`; there is no authentication, backend, payroll provider or real employee data connection. Downloaded documents are representative demo files.
+This is a local frontend demo. Changes are stored in this browser using `localStorage`; training video uploads are limited to 2 MB total in this demo. There is no role-based access control, backend, payroll provider or real employee data connection, so the admin upload form is not permission-restricted. Downloaded documents are representative demo files.
